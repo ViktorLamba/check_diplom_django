@@ -1,0 +1,476 @@
+# ===================
+# Python / Django
+# ===================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+__pycache__/
+
+# Django stuff
+*.log
+*.pot
+*.pyc
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static/
+static_root/
+media_root/
+
+# Django migrations (раскомментируйте если хотите хранить миграции в VCS)
+# **/migrations/*
+# !**/migrations/__init__.py
+# !**/migrations/0001_initial.py
+
+# Coverage reports
+.coverage
+.coverage.*
+.htmlcov/
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.tox/
+noxfile.py
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+pyproject.toml
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.env.*
+!.env.example
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# profiling data
+.prof
+.profile*
+
+# ===================
+# Node.js / Frontend
+# ===================
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+.npm-cache
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+dist-ssr
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.storybook-out
+storybook-static
+
+# Rollup
+rollup.config.js
+.temp
+
+# Vite
+.vite
+
+# Vetur
+.vscode/.vetur*
+
+# Yarn 2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ===================
+# Docker / Containers
+# ===================
+
+# Docker
+docker-compose.override.yml
+docker-compose.*.yml
+!.docker-compose.yml
+!.docker-compose.prod.yml
+!.docker-compose.override.yml
+.dockerignore
+
+# Docker volumes
+volumes/
+data/
+pgdata/
+redis-data/
+uploads/
+
+# Docker secrets
+secrets/
+*.secrets
+
+# ===================
+# IDE / Editors
+# ===================
+
+# Visual Studio Code
+.vscode/
+.history/
+*.code-workspace
+
+# IntelliJ IDEA / PyCharm / WebStorm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+.idea_modules
+
+# Eclipse
+.project
+.classpath
+.settings/
+*.pydevproject
+.metadata
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+.sublime/
+
+# Vim
+*.swp
+*.swo
+*~
+*.un~
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+.elisp
+.elispc
+auto-save-list
+tramp
+.\#*
+
+# ===================
+# OS / System
+# ===================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.Trash
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Linux
+*~
+.directory
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===================
+# Project specific
+# ===================
+
+# Backend
+backend/static_collected/
+backend/static/
+backend/media/
+backend/logs/
+backend/*.log
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.staging
+backend/*.pid
+backend/*.pid.lock
+backend/db.sqlite3
+backend/local_settings.py
+backend/celerybeat-schedule
+backend/celerybeat.pid
+
+# Frontend specific
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.staging
+frontend/.cache/
+frontend/.tmp/
+frontend/coverage/
+frontend/.next/
+frontend/out/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Secrets / Keys
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+secrets/
+.ssh/
+*.secret
+secrets.yaml
+secrets.yml
+secrets.json
+
+# Certificates
+certs/
+*.crt
+*.key
+*.pem
+
+# Logs
+*.log
+logs/
+log/
+*.log.*
+
+# Database
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.bz2
+
+# ===================
+# Testing / CI
+# ===================
+
+# Coverage
+.coverage
+.coverage.*
+.coverage.*.*
+htmlcov/
+.coverage.*.py
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===================
+# Deployment
+# ===================
+
+# Deployment files
+*.pid
+*.seed
+*.pid.lock
+*.deploy
+deployments/
+.kube/
+helm/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.pem
+*.crt
+
+# ===================
+# Misc
+# ===================
+
+# Local configuration
+*.local
+*.local.yaml
+*.local.yml
+
+# Makefile backup
+Makefile.bak
+
+# Vagrant
+.vagrant/
+
+# Python wheels
+*.whl
+
+# Sphinx
+docs/_build/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# pytype
+.pytype/
+
+# Cython debug symbols
+cython_debug/
