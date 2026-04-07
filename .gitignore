@@ -340,18 +340,6 @@ backend/local_settings.py
 backend/celerybeat-schedule
 backend/celerybeat.pid
 
-# Frontend specific
-frontend/dist/
-frontend/build/
-frontend/.env
-frontend/.env.local
-frontend/.env.production
-frontend/.env.staging
-frontend/.cache/
-frontend/.tmp/
-frontend/coverage/
-frontend/.next/
-frontend/out/
 
 # Temporary files
 tmp/
