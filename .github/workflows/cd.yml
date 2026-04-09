@@ -40,7 +40,7 @@ jobs:
             git checkout "${{ github.ref_name }}"
             git pull origin "${{ github.ref_name }}"
 
-            cat > ".env.${{ env.STACK }}" <<EOF
+            cat > ".env" <<EOF
             EXTERNAL_PORT=${{ env.EXTERNAL_PORT }}
             BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${{ env.IMAGE_TAG }}
             FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${{ env.IMAGE_TAG }}
@@ -53,9 +53,6 @@ jobs:
             EOF
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            set -a
-            . ".env.${{ env.STACK }}"
-            set +a
 
             if docker compose version >/dev/null 2>&1; then
               docker compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
