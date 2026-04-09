@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: django_web
-    command: python backend/manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./:/app
     ports:

@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
+WORKDIR /app/backend
+
 EXPOSE 8000
 
-CMD ["python", "backend/manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
