@@ -222,14 +222,6 @@ rollup.config.js
 # Docker / Containers
 # ===================
 
-# Docker
-docker-compose.override.yml
-docker-compose.*.yml
-!.docker-compose.yml
-!.docker-compose.prod.yml
-!.docker-compose.override.yml
-.dockerignore
-
 # Docker volumes
 volumes/
 data/
