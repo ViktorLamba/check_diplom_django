@@ -1,0 +1,53 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: django_web
+    command: python backend/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=django_db
+      - DB_USER=django_user
+      - DB_PASSWORD=django_pass
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: django_postgres
+    restart: unless-stopped
+    ports:
+      - "5333:5432"
+    environment:
+      POSTGRES_DB: django_db
+      POSTGRES_USER: django_user
+      POSTGRES_PASSWORD: django_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django_user -d django_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    image: node:20-alpine
+    container_name: django_frontend
+    working_dir: /app/frontend
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "if [ -f package.json ]; then npm install && npm run dev -- --host 0.0.0.0 --port 3000; else echo 'No frontend/package.json yet'; sleep infinity; fi"
+    profiles:
+      - frontend
+
+volumes:
+  postgres_data:
