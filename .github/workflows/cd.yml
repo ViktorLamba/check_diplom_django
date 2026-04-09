@@ -53,5 +53,14 @@ jobs:
             EOF
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            docker compose --env-file ".env.${{ env.STACK }}" -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
-            docker compose --env-file ".env.${{ env.STACK }}" -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
+            set -a
+            . ".env.${{ env.STACK }}"
+            set +a
+
+            if docker compose version >/dev/null 2>&1; then
+              docker compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
+              docker compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
+            else
+              docker-compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
+              docker-compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
+            fi
