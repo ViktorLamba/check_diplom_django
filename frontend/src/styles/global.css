@@ -1,0 +1,111 @@
+:root {
+  --bg: rgb(5, 6, 20);
+  --bg-card: rgba(30, 20, 60, 0.6);
+  --border-card: rgba(180, 120, 255, 0.3);
+  --shadow-card: rgba(180, 100, 255, 0.25);
+
+  --text-primary: rgb(255, 255, 255);
+  --text-secondary: rgb(160, 160, 180);
+  --text-logo: rgb(200, 200, 255);
+
+  --input-bg: rgba(20, 20, 40, 0.8);
+  --input-border: rgba(120, 120, 160, 0.3);
+  --input-focus: rgb(255, 60, 160);
+  --input-focus-shadow: rgba(255, 60, 160, 0.6);
+
+  --primary-from: rgb(255, 60, 100);
+  --primary-to: rgb(180, 80, 255);
+  --primary-shadow: rgba(255, 80, 150, 0.6);
+
+  --secondary-border: rgba(180, 120, 255, 0.4);
+  --secondary-text: rgb(200, 200, 255);
+  --secondary-hover: rgba(120, 60, 255, 0.1);
+
+  --checkbox-border: rgb(160, 160, 200);
+  --checkbox-active: rgb(180, 80, 255);
+
+  --grid: rgba(120, 120, 160, 0.15);
+
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: var(--text-primary);
+  background: var(--bg);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background:
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(255, 0, 120, 0.22),
+      transparent 20%
+    ),
+    radial-gradient(
+      circle at 78% 20%,
+      rgba(120, 0, 255, 0.28),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 70% 55%,
+      rgba(255, 0, 120, 0.12),
+      transparent 18%
+    ),
+    linear-gradient(rgb(5, 6, 20), rgb(5, 6, 20));
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  background: none;
+}
+
+input,
+textarea,
+select {
+  border: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
