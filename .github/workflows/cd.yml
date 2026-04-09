@@ -37,21 +37,21 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
 
             git fetch --all --prune
-            git checkout "${GITHUB_REF_NAME}"
-            git pull origin "${GITHUB_REF_NAME}"
+            git checkout "${{ github.ref_name }}"
+            git pull origin "${{ github.ref_name }}"
 
-            cat > ".env.${STACK}" <<EOF
-            EXTERNAL_PORT=${EXTERNAL_PORT}
-            BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${IMAGE_TAG}
-            FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${IMAGE_TAG}
+            cat > ".env.${{ env.STACK }}" <<EOF
+            EXTERNAL_PORT=${{ env.EXTERNAL_PORT }}
+            BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${{ env.IMAGE_TAG }}
+            FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${{ env.IMAGE_TAG }}
             POSTGRES_DB=${{ secrets.POSTGRES_DB }}
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
             DJANGO_DEBUG=False
-            DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+            DJANGO_ALLOWED_HOSTS=${{ env.DJANGO_ALLOWED_HOSTS }}
             EOF
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            docker compose --env-file ".env.${STACK}" -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
-            docker compose --env-file ".env.${STACK}" -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --remove-orphans
+            docker compose --env-file ".env.${{ env.STACK }}" -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
+            docker compose --env-file ".env.${{ env.STACK }}" -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
