@@ -2,8 +2,12 @@ import styles from "./LoginPage.module.scss";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormValues } from "../model/loginSchema";
+import { login } from "../model/authApi";
+import { useState } from "react";
 
 export function LoginPage() {
+  const [serverError, setServerError] = useState("");
+
   const {
     register,
     handleSubmit,
@@ -11,14 +15,39 @@ export function LoginPage() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
       rememberMe: false,
     },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    console.log("Form Data:", data);
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      setServerError("");
+
+      const response = await login({
+        username: data.username,
+        password: data.password,
+      });
+
+      console.log("Login response:", response);
+
+      if ("requires_2fa" in response && response.requires_2fa) {
+        console.log("Нужен второй шаг 2FA:", response);
+        return;
+      }
+
+      if ("user" in response) {
+        console.log("Успешный вход:", response.user);
+        return;
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setServerError(error.message);
+        return;
+      }
+      setServerError("Не удалось выполнить вход");
+    }
   };
 
   return (
@@ -50,20 +79,22 @@ export function LoginPage() {
               noValidate
             >
               <input
-                className={`${styles.input} ${styles.inputAccent} ${errors.email ? styles.inputError : ""}`}
-                type="email"
-                placeholder="Email"
-                autoComplete="email"
-                {...register("email")}
+                className={`${styles.input} ${styles.inputAccent} ${errors.username ? styles.inputError : ""}`}
+                type="text"
+                placeholder="Введите имя пользователя"
+                autoComplete="username"
+                {...register("username")}
               />
-              {errors.email && (
-                <span className={styles.errorText}>{errors.email.message}</span>
+              {errors.username && (
+                <span className={styles.errorText}>
+                  {errors.username.message}
+                </span>
               )}
 
               <input
                 className={`${styles.input} ${errors.password ? styles.inputError : ""}`}
                 type="password"
-                placeholder="Password"
+                placeholder="Пароль"
                 autoComplete="current-password"
                 {...register("password")}
               />
@@ -72,7 +103,9 @@ export function LoginPage() {
                   {errors.password.message}
                 </span>
               )}
-
+              {serverError && (
+                <div className={styles.serverError}>{serverError}</div>
+              )}
               <button className={styles.primaryButton} type="submit">
                 Войти
               </button>

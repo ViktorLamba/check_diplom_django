@@ -1,0 +1,33 @@
+import { request } from "../../../shared/api/http";
+
+export type AuthUser = {
+  id: number;
+  username: string;
+  email: string;
+};
+
+export type LoginSuccessResponse = {
+  detail: string;
+  user: AuthUser;
+};
+
+export type Login2FAResponse = {
+  detail: string;
+  requires_2fa: true;
+  username: string;
+  code_debug?: string;
+};
+
+export type LoginResponse = LoginSuccessResponse | Login2FAResponse;
+
+export type LoginPayload = {
+  username: string;
+  password: string;
+};
+
+export function login(payload: LoginPayload) {
+  return request<LoginResponse>("/api/auth/login/", {
+    method: "POST",
+    body: payload,
+  });
+}
