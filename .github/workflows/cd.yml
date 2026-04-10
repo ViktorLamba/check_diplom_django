@@ -60,24 +60,23 @@ jobs:
               DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_RELEASE }}"
             fi
 
+            BACKEND_IMAGE="${{ secrets.DOCKERHUB_REPO }}:backend-${IMAGE_TAG}"
+            FRONTEND_IMAGE="${{ secrets.DOCKERHUB_REPO }}:frontend-${IMAGE_TAG}"
+            POSTGRES_DB="${{ secrets.POSTGRES_DB }}"
+            POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+            POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}"
+            DJANGO_DEBUG="False"
+
+            export EXTERNAL_PORT BACKEND_EXTERNAL_PORT BACKEND_IMAGE FRONTEND_IMAGE
+            export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
+            export DJANGO_SECRET_KEY DJANGO_DEBUG DJANGO_ALLOWED_HOSTS
+
             cd "${{ secrets.DEPLOY_PATH }}"
 
             git fetch --all --prune
             git checkout "${{ env.TARGET_BRANCH }}"
             git pull origin "${{ env.TARGET_BRANCH }}"
-
-            cat > ".env" <<EOF_ENV
-            EXTERNAL_PORT=${EXTERNAL_PORT}
-            BACKEND_EXTERNAL_PORT=${BACKEND_EXTERNAL_PORT}
-            BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${IMAGE_TAG}
-            FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${IMAGE_TAG}
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
-            DJANGO_DEBUG=False
-            DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
-            EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
