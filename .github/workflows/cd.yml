@@ -43,6 +43,23 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -euo pipefail
+
+            if [ "${{ env.TARGET_BRANCH }}" = "main" ]; then
+              STACK="prod"
+              PROJECT_NAME="check_prod"
+              EXTERNAL_PORT="8010"
+              BACKEND_EXTERNAL_PORT="8020"
+              IMAGE_TAG="prod"
+              DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_MAIN }}"
+            else
+              STACK="test"
+              PROJECT_NAME="check_test"
+              EXTERNAL_PORT="4999"
+              BACKEND_EXTERNAL_PORT="4998"
+              IMAGE_TAG="test"
+              DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_RELEASE }}"
+            fi
+
             cd "${{ secrets.DEPLOY_PATH }}"
 
             git fetch --all --prune
@@ -50,25 +67,25 @@ jobs:
             git pull origin "${{ env.TARGET_BRANCH }}"
 
             cat > ".env" <<EOF_ENV
-            EXTERNAL_PORT=${{ env.EXTERNAL_PORT }}
-            BACKEND_EXTERNAL_PORT=${{ env.BACKEND_EXTERNAL_PORT }}
-            BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${{ env.IMAGE_TAG }}
-            FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${{ env.IMAGE_TAG }}
+            EXTERNAL_PORT=${EXTERNAL_PORT}
+            BACKEND_EXTERNAL_PORT=${BACKEND_EXTERNAL_PORT}
+            BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${IMAGE_TAG}
+            FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${IMAGE_TAG}
             POSTGRES_DB=${{ secrets.POSTGRES_DB }}
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
             DJANGO_DEBUG=False
-            DJANGO_ALLOWED_HOSTS=${{ env.DJANGO_ALLOWED_HOSTS }}
+            DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
             EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             if docker compose version >/dev/null 2>&1; then
-              docker compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
-              docker compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" up -d --force-recreate --remove-orphans
+              docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
+              docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
             else
-              docker-compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" down --remove-orphans || true
-              docker-compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" pull
-              docker-compose -f docker-compose.prod.yml -p "${{ env.PROJECT_NAME }}" up -d --force-recreate --remove-orphans
+              docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" down --remove-orphans || true
+              docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
+              docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
             fi
