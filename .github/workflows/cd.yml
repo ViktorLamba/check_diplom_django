@@ -87,6 +87,11 @@ jobs:
             DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
             EOF_ENV
 
+            export EXTERNAL_PORT BACKEND_EXTERNAL_PORT BACKEND_IMAGE FRONTEND_IMAGE
+            export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
+            export DJANGO_SECRET_KEY DJANGO_DEBUG DJANGO_ALLOWED_HOSTS
+            test -n "${BACKEND_EXTERNAL_PORT}"
+
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             if docker compose version >/dev/null 2>&1; then
