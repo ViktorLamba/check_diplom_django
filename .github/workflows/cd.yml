@@ -68,15 +68,24 @@ jobs:
             DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}"
             DJANGO_DEBUG="False"
 
-            export EXTERNAL_PORT BACKEND_EXTERNAL_PORT BACKEND_IMAGE FRONTEND_IMAGE
-            export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
-            export DJANGO_SECRET_KEY DJANGO_DEBUG DJANGO_ALLOWED_HOSTS
-
             cd "${{ secrets.DEPLOY_PATH }}"
 
             git fetch --all --prune
             git checkout "${{ env.TARGET_BRANCH }}"
             git pull origin "${{ env.TARGET_BRANCH }}"
+
+            cat > .env <<EOF_ENV
+            EXTERNAL_PORT=${EXTERNAL_PORT}
+            BACKEND_EXTERNAL_PORT=${BACKEND_EXTERNAL_PORT}
+            BACKEND_IMAGE=${BACKEND_IMAGE}
+            FRONTEND_IMAGE=${FRONTEND_IMAGE}
+            POSTGRES_DB=${POSTGRES_DB}
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+            DJANGO_DEBUG=${DJANGO_DEBUG}
+            DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+            EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
