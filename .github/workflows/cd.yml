@@ -11,30 +11,10 @@ on:
 
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'release')
     runs-on: ubuntu-latest
-    env:
-      TARGET_BRANCH: ${{ github.event.workflow_run.head_branch }}
 
     steps:
-      - name: Select environment by branch
-        run: |
-          if [ "${TARGET_BRANCH}" = "main" ]; then
-            echo "STACK=prod" >> "$GITHUB_ENV"
-            echo "PROJECT_NAME=check_prod" >> "$GITHUB_ENV"
-            echo "EXTERNAL_PORT=8010" >> "$GITHUB_ENV"
-            echo "BACKEND_EXTERNAL_PORT=8020" >> "$GITHUB_ENV"
-            echo "IMAGE_TAG=prod" >> "$GITHUB_ENV"
-            echo "DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS_MAIN }}" >> "$GITHUB_ENV"
-          else
-            echo "STACK=test" >> "$GITHUB_ENV"
-            echo "PROJECT_NAME=check_test" >> "$GITHUB_ENV"
-            echo "EXTERNAL_PORT=4999" >> "$GITHUB_ENV"
-            echo "BACKEND_EXTERNAL_PORT=4998" >> "$GITHUB_ENV"
-            echo "IMAGE_TAG=test" >> "$GITHUB_ENV"
-            echo "DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS_RELEASE }}" >> "$GITHUB_ENV"
-          fi
-
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -44,15 +24,14 @@ jobs:
           script: |
             set -euo pipefail
 
-            if [ "${{ env.TARGET_BRANCH }}" = "main" ]; then
-              STACK="prod"
+            TARGET_BRANCH="${{ github.event.workflow_run.head_branch }}"
+            if [ "${TARGET_BRANCH}" = "main" ]; then
               PROJECT_NAME="check_prod"
               EXTERNAL_PORT="8010"
               BACKEND_EXTERNAL_PORT="8020"
               IMAGE_TAG="prod"
               DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_MAIN }}"
             else
-              STACK="test"
               PROJECT_NAME="check_test"
               EXTERNAL_PORT="4999"
               BACKEND_EXTERNAL_PORT="4998"
@@ -69,10 +48,9 @@ jobs:
             DJANGO_DEBUG="False"
 
             cd "${{ secrets.DEPLOY_PATH }}"
-
             git fetch --all --prune
-            git checkout "${{ env.TARGET_BRANCH }}"
-            git pull origin "${{ env.TARGET_BRANCH }}"
+            git checkout "${TARGET_BRANCH}"
+            git pull origin "${TARGET_BRANCH}"
 
             cat > .env <<EOF_ENV
             EXTERNAL_PORT=${EXTERNAL_PORT}
@@ -86,11 +64,6 @@ jobs:
             DJANGO_DEBUG=${DJANGO_DEBUG}
             DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
             EOF_ENV
-
-            export EXTERNAL_PORT BACKEND_EXTERNAL_PORT BACKEND_IMAGE FRONTEND_IMAGE
-            export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
-            export DJANGO_SECRET_KEY DJANGO_DEBUG DJANGO_ALLOWED_HOSTS
-            test -n "${BACKEND_EXTERNAL_PORT}"
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
