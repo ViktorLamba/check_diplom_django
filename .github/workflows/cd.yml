@@ -1,18 +1,25 @@
 name: CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
       - main
       - release
 
 jobs:
   deploy:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ github.event.workflow_run.head_branch }}
+
     steps:
       - name: Select environment by branch
         run: |
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+          if [ "${TARGET_BRANCH}" = "main" ]; then
             echo "STACK=prod" >> "$GITHUB_ENV"
             echo "PROJECT_NAME=check_prod" >> "$GITHUB_ENV"
             echo "EXTERNAL_PORT=8010" >> "$GITHUB_ENV"
@@ -37,10 +44,10 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
 
             git fetch --all --prune
-            git checkout "${{ github.ref_name }}"
-            git pull origin "${{ github.ref_name }}"
+            git checkout "${{ env.TARGET_BRANCH }}"
+            git pull origin "${{ env.TARGET_BRANCH }}"
 
-            cat > ".env" <<EOF
+            cat > ".env" <<EOF_ENV
             EXTERNAL_PORT=${{ env.EXTERNAL_PORT }}
             BACKEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:backend-${{ env.IMAGE_TAG }}
             FRONTEND_IMAGE=${{ secrets.DOCKERHUB_REPO }}:frontend-${{ env.IMAGE_TAG }}
@@ -50,7 +57,7 @@ jobs:
             DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
             DJANGO_DEBUG=False
             DJANGO_ALLOWED_HOSTS=${{ env.DJANGO_ALLOWED_HOSTS }}
-            EOF
+            EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
