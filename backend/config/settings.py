@@ -1,5 +1,6 @@
 """Настройки Django для проекта config."""
 
+import os
 from pathlib import Path
 
 # Базовая директория проекта.
@@ -9,12 +10,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Базовые настройки разработки.
 
 # В продакшене ключ должен задаваться через переменные окружения.
-SECRET_KEY = 'django-insecure-mr3l6v2j&_*$v8muri790v^mhv!sqo-f2v&z_mdhcuikbb8nc$'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-mr3l6v2j&_*$v8muri790v^mhv!sqo-f2v&z_mdhcuikbb8nc$',
+)
 
 # В продакшене DEBUG должен быть выключен.
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = []
+_allowed_hosts_raw = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts_raw.split(',') if host.strip()]
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Подключенные приложения.
