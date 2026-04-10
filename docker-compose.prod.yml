@@ -14,6 +14,8 @@ services:
     image: ${BACKEND_IMAGE}
     restart: unless-stopped
     command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "${BACKEND_EXTERNAL_PORT}:8000"
     expose:
       - "8000"
     environment:
