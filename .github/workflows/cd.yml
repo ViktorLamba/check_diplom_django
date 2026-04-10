@@ -1,16 +1,20 @@
 name: cd
 
 on:
-  push:
+  workflow_run:
+    workflows: ["ci"]
+    types:
+      - completed
     branches:
       - main
       - release
 
 jobs:
   deploy:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
-      TARGET_BRANCH: ${{ github.ref_name }}
+      TARGET_BRANCH: ${{ github.event.workflow_run.head_branch }}
 
     steps:
       - name: Select environment by branch
