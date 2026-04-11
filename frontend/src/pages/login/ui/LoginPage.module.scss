@@ -387,3 +387,75 @@
     gap: 10px;
   }
 }
+
+.verifyForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.subtitleVerify {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  color: var(--text-secondary);
+  font-size: 1.28rem;
+  line-height: 1.4;
+}
+
+.codeInput {
+  width: 100%;
+  height: 64px;
+  padding: 0 18px;
+  border-radius: 18px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.45em;
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.codeInput:focus {
+  border-color: var(--input-focus);
+  box-shadow:
+    0 0 0 1px rgba(255, 60, 160, 0.28),
+    0 0 18px var(--input-focus-shadow);
+}
+
+.secondaryTextButton {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  text-align: center;
+  transition:
+    color 180ms ease,
+    text-shadow 180ms ease;
+}
+
+.secondaryTextButton:hover {
+  color: rgb(225, 205, 255);
+  text-shadow: 0 0 12px rgba(180, 80, 255, 0.25);
+}
+
+.verifyHint {
+  margin: 8px 0 0;
+  color: rgba(160, 160, 180, 0.72);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.debugCode {
+  margin: 6px 0 0;
+  color: rgb(200, 200, 255);
+  font-size: 0.85rem;
+  text-align: center;
+}

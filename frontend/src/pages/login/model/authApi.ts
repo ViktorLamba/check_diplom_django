@@ -31,3 +31,20 @@ export function login(payload: LoginPayload) {
     body: payload,
   });
 }
+
+export type VerifyLoginPayload = {
+  username: string;
+  code: string;
+};
+
+export type VerifyLoginResponse = {
+  detail: string;
+  user: AuthUser;
+};
+
+export function verifyLogin(payload: VerifyLoginPayload) {
+  return request<VerifyLoginResponse>("/api/auth/login/verify/", {
+    method: "POST",
+    body: payload,
+  });
+}
