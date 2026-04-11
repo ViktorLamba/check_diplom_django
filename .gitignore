@@ -133,6 +133,7 @@ dmypy.json
 # ===================
 
 # Logs
+cookies.txt
 logs
 *.log
 npm-debug.log*
