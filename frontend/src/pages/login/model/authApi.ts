@@ -48,3 +48,13 @@ export function verifyLogin(payload: VerifyLoginPayload) {
     body: payload,
   });
 }
+
+export type MeResponse = {
+  user: AuthUser;
+};
+
+export function me() {
+  return request<MeResponse>("/api/auth/me/", {
+    method: "GET",
+  });
+}
