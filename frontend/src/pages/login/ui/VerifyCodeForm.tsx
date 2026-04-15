@@ -12,7 +12,6 @@ type VerifyCodeFormProps = {
   onSubmit: (data: VerifyCodeFormValues) => void | Promise<void>;
   errors: FieldErrors<VerifyCodeFormValues>;
   serverError: string;
-  debugCode: string;
   onBackToLogin: () => void;
 };
 
@@ -22,7 +21,6 @@ export function VerifyCodeForm({
   onSubmit,
   errors,
   serverError,
-  debugCode,
   onBackToLogin,
 }: VerifyCodeFormProps) {
   return (
@@ -70,11 +68,7 @@ export function VerifyCodeForm({
           Вернуться к входу
         </button>
 
-        <p className={styles.verifyHint}>Код действителен в течение 5 минут</p>
-
-        {debugCode && (
-          <p className={styles.debugCode}>Тестовый код: {debugCode}</p>
-        )}
+        <p className={styles.verifyHint}>Код действителен в течение 10 минут</p>
       </form>
     </>
   );

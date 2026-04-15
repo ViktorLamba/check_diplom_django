@@ -18,7 +18,6 @@ export function LoginPage() {
   const [serverError, setServerError] = useState("");
   const [authStep, setAuthStep] = useState<"login" | "verify">("login");
   const [pendingUsername, setPendingUsername] = useState("");
-  const [debugCode, setDebugCode] = useState("");
 
   const {
     register,
@@ -61,7 +60,6 @@ export function LoginPage() {
         setServerError("");
         setAuthStep("verify");
         setPendingUsername(response.username);
-        setDebugCode(response.code_debug ?? "");
         resetVerifyForm();
         return;
       }
@@ -104,7 +102,6 @@ export function LoginPage() {
     setServerError("");
     setAuthStep("login");
     setPendingUsername("");
-    setDebugCode("");
     resetVerifyForm();
     resetLoginForm({
       username: pendingUsername,
@@ -142,7 +139,6 @@ export function LoginPage() {
                 onSubmit={onVerifySubmit}
                 errors={verifyErrors}
                 serverError={serverError}
-                debugCode={debugCode}
                 onBackToLogin={handleBackToLogin}
               />
             )}

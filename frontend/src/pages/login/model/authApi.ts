@@ -15,7 +15,6 @@ export type Login2FAResponse = {
   detail: string;
   requires_2fa: true;
   username: string;
-  code_debug?: string;
 };
 
 export type LoginResponse = LoginSuccessResponse | Login2FAResponse;
