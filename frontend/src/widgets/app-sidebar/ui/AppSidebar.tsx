@@ -14,12 +14,10 @@ import {
   BadgeCheck,
   History,
   FileText,
-  Settings,
   User,
   ChevronsUpDown,
   LogOut,
   CircleUserRound,
-  Cog,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -39,7 +37,7 @@ export type SidebarSection =
   | "verification"
   | "history"
   | "diplomas"
-  | "settings";
+  | "account";
 
 type AppSidebarProps = {
   activeSection: SidebarSection;
@@ -56,7 +54,6 @@ const items: Array<{
   { key: "verification", title: "Подтверждение диплома", icon: BadgeCheck },
   { key: "history", title: "История проверки", icon: History },
   { key: "diplomas", title: "Дипломы", icon: FileText },
-  { key: "settings", title: "Настройки", icon: Settings },
 ];
 
 export function AppSidebar({
@@ -146,14 +143,12 @@ export function AppSidebar({
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem className={styles.accountMenuItem}>
+            <DropdownMenuItem
+              className={styles.accountMenuItem}
+              onClick={() => onSectionChange("account")}
+            >
               <CircleUserRound className={styles.dropdownIcon} />
               <span>Аккаунт</span>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem className={styles.accountMenuItem}>
-              <Cog className={styles.dropdownIcon} />
-              <span>Настройки</span>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
