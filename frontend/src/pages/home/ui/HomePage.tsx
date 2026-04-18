@@ -11,6 +11,7 @@ import styles from "./HomePage.module.scss";
 import { useEffect, useState } from "react";
 import { me, type AuthUser } from "@/pages/login/model/authApi";
 import type { ReactNode } from "react";
+import { DashboardPage } from "./DashboardPage";
 
 export function HomePage() {
   const [activeSection, setActiveSection] =
@@ -25,11 +26,9 @@ export function HomePage() {
     }
   > = {
     dashboard: {
-      title: "Dashboard",
-      subtitle: "Это главная страница приложения.",
-      render: () => (
-        <p>Здесь позже будут карточки статистики, quick actions и таблица.</p>
-      ),
+      title: "Главная страница",
+      subtitle: "Обзор активности платформы",
+      render: () => <DashboardPage />,
     },
     verification: {
       title: "Подтверждение диплома",
@@ -71,6 +70,8 @@ export function HomePage() {
 
   const currentSection = sectionContent[activeSection];
 
+  const isDashboard = activeSection === "dashboard";
+
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
@@ -96,14 +97,22 @@ export function HomePage() {
         <SidebarInset className={styles.inset}>
           <header className={styles.header}>
             <SidebarTrigger className={styles.trigger} />
-            <h1 className={styles.title}>{currentSection.title}</h1>
-            <p className={styles.subtitle}>{currentSection.subtitle}</p>
+            <div className={styles.headerContent}>
+              <h1 className={styles.title}>{currentSection.title}</h1>
+              <p className={styles.subtitle}>{currentSection.subtitle}</p>
+            </div>
           </header>
 
-          <main className={styles.content}>
-            <div className={styles.placeholderCard}>
-              {currentSection.render()}
-            </div>
+          <main
+            className={isDashboard ? styles.dashboardContent : styles.content}
+          >
+            {isDashboard ? (
+              currentSection.render()
+            ) : (
+              <div className={styles.placeholderCard}>
+                {currentSection.render()}
+              </div>
+            )}
           </main>
         </SidebarInset>
       </div>

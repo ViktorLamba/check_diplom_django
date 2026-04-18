@@ -1,0 +1,54 @@
+.card {
+  position: relative;
+  min-height: 148px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.02)
+    ),
+    rgba(16, 18, 36, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(180, 100, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: auto 18px 0 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(255, 60, 100), rgb(180, 80, 255));
+  opacity: 0.9;
+  filter: blur(0.4px);
+}
+
+.label {
+  margin: 0;
+  color: rgb(160, 160, 180);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.value {
+  color: rgb(255, 255, 255);
+  font-size: clamp(2rem, 2.4vw, 2.8rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
