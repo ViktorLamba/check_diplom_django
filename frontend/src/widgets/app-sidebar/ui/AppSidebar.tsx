@@ -31,15 +31,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import styles from "./AppSidebar.module.scss";
 
-const items = [
-  { title: "Главная страница", icon: LayoutDashboard, isActive: true },
-  { title: "Подтверждение диплома", icon: BadgeCheck },
-  { title: "История проверки", icon: History },
-  { title: "Дипломы", icon: FileText },
-  { title: "Настройки", icon: Settings },
+export type SidebarSection =
+  | "dashboard"
+  | "verification"
+  | "history"
+  | "diplomas"
+  | "settings";
+
+type AppSidebarProps = {
+  activeSection: SidebarSection;
+  onSectionChange: (section: SidebarSection) => void;
+};
+
+const items: Array<{
+  key: SidebarSection;
+  title: string;
+  icon: typeof LayoutDashboard;
+}> = [
+  { key: "dashboard", title: "Главная страница", icon: LayoutDashboard },
+  { key: "verification", title: "Подтверждение диплома", icon: BadgeCheck },
+  { key: "history", title: "История проверки", icon: History },
+  { key: "diplomas", title: "Дипломы", icon: FileText },
+  { key: "settings", title: "Настройки", icon: Settings },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({
+  activeSection,
+  onSectionChange,
+}: AppSidebarProps) {
   return (
     <Sidebar className={styles.sidebar}>
       <SidebarHeader className={styles.header}>
@@ -50,20 +69,24 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    className={
-                      item.isActive
-                        ? styles.menuButtonActive
-                        : styles.menuButton
-                    }
-                  >
-                    <item.icon className={styles.icon} />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const isActive = item.key === activeSection;
+
+                return (
+                  <SidebarMenuItem key={item.key}>
+                    <SidebarMenuButton
+                      type="button"
+                      onClick={() => onSectionChange(item.key)}
+                      className={
+                        isActive ? styles.menuButtonActive : styles.menuButton
+                      }
+                    >
+                      <item.icon className={styles.icon} />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
