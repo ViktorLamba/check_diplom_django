@@ -29,6 +29,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { AuthUser } from "@/pages/login/model/authApi";
+import { useNavigate } from "react-router-dom";
+import { logout } from "@/pages/login/model/authApi";
 import styles from "./AppSidebar.module.scss";
 
 export type SidebarSection =
@@ -41,6 +44,7 @@ export type SidebarSection =
 type AppSidebarProps = {
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
+  user: AuthUser | null;
 };
 
 const items: Array<{
@@ -58,7 +62,21 @@ const items: Array<{
 export function AppSidebar({
   activeSection,
   onSectionChange,
+  user,
 }: AppSidebarProps) {
+  const username = user?.username ?? "Загрузка...";
+  const email = user?.email ?? "email не указан";
+
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Не удалось выйти из системы", error);
+    }
+  };
   return (
     <Sidebar className={styles.sidebar}>
       <SidebarHeader className={styles.header}>
@@ -101,8 +119,8 @@ export function AppSidebar({
               </div>
 
               <div className={styles.accountInfo}>
-                <div className={styles.accountName}>username</div>
-                <div className={styles.accountEmail}>user@example.com</div>
+                <div className={styles.accountName}>{username}</div>
+                <div className={styles.accountEmail}>{email}</div>
               </div>
 
               <ChevronsUpDown className={styles.accountChevron} />
@@ -121,8 +139,8 @@ export function AppSidebar({
               </div>
 
               <div className={styles.accountMenuInfo}>
-                <div className={styles.accountName}>username</div>
-                <div className={styles.accountEmail}>user@example.com</div>
+                <div className={styles.accountName}>{username}</div>
+                <div className={styles.accountEmail}>{email}</div>
               </div>
             </DropdownMenuLabel>
 
@@ -140,8 +158,12 @@ export function AppSidebar({
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem className={styles.accountMenuItem}>
+            <DropdownMenuItem
+              className={styles.accountMenuItem}
+              onClick={handleLogout}
+            >
               <LogOut className={styles.dropdownIcon} />
+
               <span>Выйти</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

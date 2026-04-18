@@ -31,6 +31,16 @@ export function login(payload: LoginPayload) {
   });
 }
 
+export function logout() {
+  return request<LogoutResponse>("/api/auth/logout/", {
+    method: "POST",
+  });
+}
+
+export type LogoutResponse = {
+  detail: string;
+};
+
 export type VerifyLoginPayload = {
   username: string;
   code: string;

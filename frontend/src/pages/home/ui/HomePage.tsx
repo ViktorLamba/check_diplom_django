@@ -1,10 +1,15 @@
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import {
   AppSidebar,
   type SidebarSection,
 } from "@/widgets/app-sidebar/ui/AppSidebar";
 import styles from "./HomePage.module.scss";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { me, type AuthUser } from "@/pages/login/model/authApi";
 
 export function HomePage() {
   const [activeSection, setActiveSection] =
@@ -46,15 +51,31 @@ export function HomePage() {
   };
 
   const currentSection = sectionContent[activeSection];
+
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const response = await me();
+        setUser(response.user);
+      } catch (error) {
+        console.error("Не удалось загрузить пользователя", error);
+      }
+    };
+    void loadUser();
+  }, []);
   return (
     <SidebarProvider>
       <div className={styles.layout}>
         <AppSidebar
           activeSection={activeSection}
           onSectionChange={setActiveSection}
+          user={user}
         />
 
         <SidebarInset className={styles.inset}>
+          <SidebarTrigger className={styles.trigger} />
           <header className={styles.header}>
             <h1 className={styles.title}>{currentSection.title}</h1>
             <p className={styles.subtitle}>{currentSection.subtitle}</p>
