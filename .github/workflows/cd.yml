@@ -31,12 +31,14 @@ jobs:
               BACKEND_EXTERNAL_PORT="8020"
               IMAGE_TAG="prod"
               DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_MAIN }}"
+              DJANGO_SITE_URL="http://${{ secrets.SSH_HOST }}:8010"
             else
               PROJECT_NAME="check_test"
               EXTERNAL_PORT="4999"
               BACKEND_EXTERNAL_PORT="4998"
               IMAGE_TAG="test"
               DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_RELEASE }}"
+              DJANGO_SITE_URL="http://${{ secrets.SSH_HOST }}:4999"
             fi
 
             BACKEND_IMAGE="${{ secrets.DOCKERHUB_REPO }}:backend-${IMAGE_TAG}"
@@ -68,6 +70,7 @@ jobs:
             DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
             DJANGO_DEBUG=${DJANGO_DEBUG}
             DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+            DJANGO_SITE_URL=${DJANGO_SITE_URL}
             EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin

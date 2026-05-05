@@ -1,10 +1,12 @@
 from django.contrib import admin
+import os
 
 from .models import TwoFactorCode
 
 admin.site.site_header = 'R3DME Administration'
 admin.site.site_title = 'R3DME Admin'
 admin.site.index_title = 'Управление стендом'
+admin.site.site_url = os.getenv('DJANGO_SITE_URL', '/')
 
 
 @admin.register(TwoFactorCode)
