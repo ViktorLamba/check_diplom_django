@@ -70,8 +70,10 @@ jobs:
             if docker compose version >/dev/null 2>&1; then
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             else
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" down --remove-orphans || true
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             fi
