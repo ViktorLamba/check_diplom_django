@@ -2,6 +2,10 @@ from django.contrib import admin
 
 from .models import TwoFactorCode
 
+admin.site.site_header = 'R3DME Administration'
+admin.site.site_title = 'R3DME Admin'
+admin.site.index_title = 'Управление стендом'
+
 
 @admin.register(TwoFactorCode)
 class TwoFactorCodeAdmin(admin.ModelAdmin):
