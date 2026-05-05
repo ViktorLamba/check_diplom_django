@@ -1,5 +1,6 @@
 """Настройки Django для проекта config."""
 
+import os
 from pathlib import Path
 
 # Базовая директория проекта.
@@ -9,12 +10,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Базовые настройки разработки.
 
 # В продакшене ключ должен задаваться через переменные окружения.
-SECRET_KEY = 'django-insecure-mr3l6v2j&_*$v8muri790v^mhv!sqo-f2v&z_mdhcuikbb8nc$'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-mr3l6v2j&_*$v8muri790v^mhv!sqo-f2v&z_mdhcuikbb8nc$',
+)
 
 # В продакшене DEBUG должен быть выключен.
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = []
+_allowed_hosts_raw = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts_raw.split(',') if host.strip()]
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '138.124.61.62']
 
 
 # Подключенные приложения.
@@ -59,13 +66,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # База данных.
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_db_name = os.getenv('DB_NAME') or os.getenv('POSTGRES_DB')
+_db_user = os.getenv('DB_USER') or os.getenv('POSTGRES_USER', '')
+_db_password = os.getenv('DB_PASSWORD') or os.getenv('POSTGRES_PASSWORD', '')
+if _db_name:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _db_name,
+            'USER': _db_user,
+            'PASSWORD': _db_password,
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Валидаторы паролей.
@@ -100,3 +121,18 @@ USE_TZ = True
 # Статические файлы.
 
 STATIC_URL = 'static/'
+
+
+# Почта.
+
+EMAIL_BACKEND = os.getenv(
+    'DJANGO_EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend',
+)
+EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('DJANGO_EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('DJANGO_EMAIL_USE_TLS', 'True').lower() in ('1', 'true', 'yes', 'on')
+EMAIL_USE_SSL = os.getenv('DJANGO_EMAIL_USE_SSL', 'False').lower() in ('1', 'true', 'yes', 'on')
+DEFAULT_FROM_EMAIL = os.getenv('DJANGO_DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@example.com')

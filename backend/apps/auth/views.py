@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -84,20 +85,34 @@ def login_view(request):
         login(request, user)
         return JsonResponse({'detail': 'Вход выполнен.', 'user': _user_payload(user)}, status=200)
 
+    if not user.email:
+        return JsonResponse({'detail': 'У пользователя не указан email для получения кода 2FA.'}, status=400)
+
     TwoFactorCode.objects.filter(user=user, is_used=False).update(is_used=True)
     code = f'{random.randint(0, 999999):06d}'
     expires_at = timezone.now() + timedelta(minutes=10)
     TwoFactorCode.objects.create(user=user, code=code, expires_at=expires_at)
 
-    response_payload = {
-        'detail': 'Код двухфакторной аутентификации отправлен. Подтвердите вход на /api/auth/login/verify/.',
-        'requires_2fa': True,
-        'username': user.username,
-    }
-    if settings.DEBUG:
-        response_payload['code_debug'] = code
+    send_mail(
+        subject='Код входа (2FA)',
+        message=(
+            f'Здравствуйте, {user.username}.\n\n'
+            f'Ваш код подтверждения входа: {code}\n'
+            'Код действует 10 минут.'
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
 
-    return JsonResponse(response_payload, status=200)
+    return JsonResponse(
+        {
+            'detail': 'Код двухфакторной аутентификации отправлен. Подтвердите вход на /api/auth/login/verify/.',
+            'requires_2fa': True,
+            'username': user.username,
+        },
+        status=200,
+    )
 
 
 @require_POST

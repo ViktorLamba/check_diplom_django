@@ -47,6 +47,11 @@ jobs:
             DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}"
             DJANGO_DEBUG="False"
 
+            [ -n "${POSTGRES_DB}" ] || { echo "POSTGRES_DB is empty"; exit 1; }
+            [ -n "${POSTGRES_USER}" ] || { echo "POSTGRES_USER is empty"; exit 1; }
+            [ -n "${POSTGRES_PASSWORD}" ] || { echo "POSTGRES_PASSWORD is empty"; exit 1; }
+            [ -n "${DJANGO_SECRET_KEY}" ] || { echo "DJANGO_SECRET_KEY is empty"; exit 1; }
+
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch --all --prune
             git checkout "${TARGET_BRANCH}"
@@ -70,8 +75,12 @@ jobs:
             if docker compose version >/dev/null 2>&1; then
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             else
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" down --remove-orphans || true
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" pull
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" docker-compose -f docker-compose.prod.yml -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             fi

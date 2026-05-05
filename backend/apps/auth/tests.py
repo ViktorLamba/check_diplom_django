@@ -85,6 +85,7 @@ class AuthApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['requires_2fa'])
+        self.assertNotIn('code_debug', response.json())
 
         me_response = self.client.get(self.me_url)
         self.assertEqual(me_response.status_code, 401)

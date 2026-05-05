@@ -20,6 +20,8 @@ develop-eggs/
 lib/
 lib64/
 __pycache__/
+!frontend/src/lib/
+!frontend/src/lib/**
 
 # Django stuff
 *.log
@@ -133,6 +135,7 @@ dmypy.json
 # ===================
 
 # Logs
+cookies.txt
 logs
 *.log
 npm-debug.log*
