@@ -31,12 +31,14 @@ jobs:
               BACKEND_EXTERNAL_PORT="8020"
               IMAGE_TAG="prod"
               DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_MAIN }}"
+              DJANGO_SITE_URL="http://${{ secrets.SSH_HOST }}:8010"
             else
               PROJECT_NAME="check_test"
               EXTERNAL_PORT="4999"
               BACKEND_EXTERNAL_PORT="4998"
               IMAGE_TAG="test"
               DJANGO_ALLOWED_HOSTS="${{ secrets.DJANGO_ALLOWED_HOSTS_RELEASE }}"
+              DJANGO_SITE_URL="http://${{ secrets.SSH_HOST }}:4999"
             fi
 
             BACKEND_IMAGE="${{ secrets.DOCKERHUB_REPO }}:backend-${IMAGE_TAG}"
@@ -46,11 +48,24 @@ jobs:
             POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
             DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}"
             DJANGO_DEBUG="False"
+            DJANGO_EMAIL_BACKEND="${{ secrets.DJANGO_EMAIL_BACKEND }}"
+            DJANGO_EMAIL_HOST="${{ secrets.DJANGO_EMAIL_HOST }}"
+            DJANGO_EMAIL_PORT="${{ secrets.DJANGO_EMAIL_PORT }}"
+            DJANGO_EMAIL_HOST_USER="${{ secrets.DJANGO_EMAIL_HOST_USER }}"
+            DJANGO_EMAIL_HOST_PASSWORD="${{ secrets.DJANGO_EMAIL_HOST_PASSWORD }}"
+            DJANGO_EMAIL_USE_TLS="${{ secrets.DJANGO_EMAIL_USE_TLS }}"
+            DJANGO_EMAIL_USE_SSL="${{ secrets.DJANGO_EMAIL_USE_SSL }}"
+            DJANGO_DEFAULT_FROM_EMAIL="${{ secrets.DJANGO_DEFAULT_FROM_EMAIL }}"
 
             [ -n "${POSTGRES_DB}" ] || { echo "POSTGRES_DB is empty"; exit 1; }
             [ -n "${POSTGRES_USER}" ] || { echo "POSTGRES_USER is empty"; exit 1; }
             [ -n "${POSTGRES_PASSWORD}" ] || { echo "POSTGRES_PASSWORD is empty"; exit 1; }
             [ -n "${DJANGO_SECRET_KEY}" ] || { echo "DJANGO_SECRET_KEY is empty"; exit 1; }
+            [ -n "${DJANGO_EMAIL_BACKEND}" ] || { echo "DJANGO_EMAIL_BACKEND is empty"; exit 1; }
+            [ -n "${DJANGO_EMAIL_HOST}" ] || { echo "DJANGO_EMAIL_HOST is empty"; exit 1; }
+            [ -n "${DJANGO_EMAIL_PORT}" ] || { echo "DJANGO_EMAIL_PORT is empty"; exit 1; }
+            [ -n "${DJANGO_EMAIL_HOST_USER}" ] || { echo "DJANGO_EMAIL_HOST_USER is empty"; exit 1; }
+            [ -n "${DJANGO_EMAIL_HOST_PASSWORD}" ] || { echo "DJANGO_EMAIL_HOST_PASSWORD is empty"; exit 1; }
 
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch --all --prune
@@ -68,6 +83,15 @@ jobs:
             DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
             DJANGO_DEBUG=${DJANGO_DEBUG}
             DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+            DJANGO_SITE_URL=${DJANGO_SITE_URL}
+            DJANGO_EMAIL_BACKEND=${DJANGO_EMAIL_BACKEND}
+            DJANGO_EMAIL_HOST=${DJANGO_EMAIL_HOST}
+            DJANGO_EMAIL_PORT=${DJANGO_EMAIL_PORT}
+            DJANGO_EMAIL_HOST_USER=${DJANGO_EMAIL_HOST_USER}
+            DJANGO_EMAIL_HOST_PASSWORD=${DJANGO_EMAIL_HOST_PASSWORD}
+            DJANGO_EMAIL_USE_TLS=${DJANGO_EMAIL_USE_TLS}
+            DJANGO_EMAIL_USE_SSL=${DJANGO_EMAIL_USE_SSL}
+            DJANGO_DEFAULT_FROM_EMAIL=${DJANGO_DEFAULT_FROM_EMAIL}
             EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
