@@ -1,6 +1,7 @@
 """Настройки Django для проекта config."""
 
 from pathlib import Path
+import os
 
 # Базовая директория проекта.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,6 +28,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.auth.apps.AuthConfig',
+    'diplomas',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -62,8 +65,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'diplom_db',
+        'USER': 'diplom_user',
+        'PASSWORD': 'diplom_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -100,3 +107,9 @@ USE_TZ = True
 # Статические файлы.
 
 STATIC_URL = 'static/'
+
+""" Часть добавленная семеном если кто то будет возмущтася , не звоните """
+DIPLOMA_HASH_SALT = os.environ.get('DIPLOMA_HASH_SALT', 'default-salt-change-me')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
