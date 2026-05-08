@@ -5,9 +5,8 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/widgets/app-sidebar/ui/AppSidebar";
 import styles from "./HomePage.module.scss";
-import { useEffect, useState } from "react";
-import { me, type AuthUser } from "@/pages/login/model/authApi";
 import { Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "@/shared/auth/AuthContext";
 
 const pageMeta: Record<
   string,
@@ -36,26 +35,35 @@ const pageMeta: Record<
     title: "Аккаунт",
     subtitle: "Управление профилем и безопасностью входа.",
   },
+  "/home/universities": {
+    title: "Вузы",
+    subtitle: "Регистрация и управление вузами.",
+  },
+  "/home/users": {
+    title: "Пользователи",
+    subtitle: "Управление пользователями системы.",
+  },
+  "/home/students": {
+    title: "Студенты",
+    subtitle: "Студенты вашего вуза.",
+  },
+  "/home/diplomas/create": {
+    title: "Создание диплома",
+    subtitle: "Добавление диплома студенту.",
+  },
+  "/home/my-diplomas": {
+    title: "Мои дипломы",
+    subtitle: "Ваши дипломы и статусы проверки.",
+  },
 };
 
 export function HomePage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user } = useAuth();
   const location = useLocation();
 
   const currentMeta =
     pageMeta[location.pathname] ?? pageMeta["/home/dashboard"];
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const response = await me();
-        setUser(response.user);
-      } catch (error) {
-        console.error("Не удалось загрузить пользователя", error);
-      }
-    };
-    void loadUser();
-  }, []);
   return (
     <SidebarProvider>
       <div className={styles.layout}>
