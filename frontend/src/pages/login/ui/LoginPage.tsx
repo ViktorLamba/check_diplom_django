@@ -66,7 +66,7 @@ export function LoginPage() {
 
       if ("user" in response) {
         console.log("Успешный вход:", response.user);
-        navigate("/home");
+        navigate("/home/dashboard");
         return;
       }
     } catch (error) {
@@ -88,7 +88,7 @@ export function LoginPage() {
       });
 
       console.log("Вход подтвержден:", response.user);
-      navigate("/home");
+      navigate("/home/dashboard");
     } catch (error) {
       if (error instanceof Error) {
         setServerError(error.message);

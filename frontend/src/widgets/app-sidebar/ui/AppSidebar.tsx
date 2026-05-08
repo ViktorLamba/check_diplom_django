@@ -28,48 +28,40 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AuthUser } from "@/pages/login/model/authApi";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "@/pages/login/model/authApi";
 import styles from "./AppSidebar.module.scss";
 
-export type SidebarSection =
-  | "dashboard"
-  | "verification"
-  | "history"
-  | "diplomas"
-  | "account";
-
 type AppSidebarProps = {
-  activeSection: SidebarSection;
-  onSectionChange: (section: SidebarSection) => void;
   user: AuthUser | null;
 };
 
 const items: Array<{
-  key: SidebarSection;
+  to: string;
   title: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { key: "dashboard", title: "Главная страница", icon: LayoutDashboard },
-  { key: "verification", title: "Подтверждение диплома", icon: BadgeCheck },
-  { key: "history", title: "История проверки", icon: History },
-  { key: "diplomas", title: "Дипломы", icon: FileText },
+  { to: "/home/dashboard", title: "Главная страница", icon: LayoutDashboard },
+  {
+    to: "/home/verification",
+    title: "Подтверждение диплома",
+    icon: BadgeCheck,
+  },
+  { to: "/home/history", title: "История проверки", icon: History },
+  { to: "/home/diplomas", title: "Дипломы", icon: FileText },
 ];
 
-export function AppSidebar({
-  activeSection,
-  onSectionChange,
-  user,
-}: AppSidebarProps) {
+export function AppSidebar({ user }: AppSidebarProps) {
   const username = user?.username ?? "Загрузка...";
   const email = user?.email ?? "email не указан";
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/");
+      navigate("/home");
     } catch (error) {
       console.error("Не удалось выйти из системы", error);
     }
@@ -85,19 +77,21 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const isActive = item.key === activeSection;
+                const isActive = location.pathname === item.to;
 
                 return (
-                  <SidebarMenuItem key={item.key}>
+                  <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton
-                      type="button"
-                      onClick={() => onSectionChange(item.key)}
+                      asChild
+                      isActive={isActive}
                       className={
                         isActive ? styles.menuButtonActive : styles.menuButton
                       }
                     >
-                      <item.icon className={styles.icon} />
-                      <span>{item.title}</span>
+                      <NavLink to={item.to}>
+                        <item.icon className={styles.icon} />
+                        <span>{item.title}</span>
+                      </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -145,7 +139,7 @@ export function AppSidebar({
 
             <DropdownMenuItem
               className={styles.accountMenuItem}
-              onClick={() => onSectionChange("account")}
+              onClick={() => navigate("/home/account")}
             >
               <CircleUserRound className={styles.dropdownIcon} />
               <span>Аккаунт</span>
