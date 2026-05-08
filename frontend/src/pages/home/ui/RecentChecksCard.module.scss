@@ -1,0 +1,103 @@
+.card {
+  border-radius: 22px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.02)
+    ),
+    rgba(16, 18, 36, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(180, 100, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding: 20px;
+}
+
+.header {
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: 140px 120px minmax(180px, 1.2fr) minmax(160px, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.headRow {
+  padding: 0 0 12px;
+  color: rgb(160, 160, 180);
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(180, 120, 255, 0.12);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(180, 120, 255, 0.08);
+  transition: background 180ms ease;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.statusCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.valid {
+  background: rgb(90, 220, 120);
+  box-shadow: 0 0 10px rgba(90, 220, 120, 0.45);
+}
+
+.invalid {
+  background: rgb(255, 90, 110);
+  box-shadow: 0 0 10px rgba(255, 90, 110, 0.45);
+}
+
+.revoked {
+  background: rgb(255, 184, 77);
+  box-shadow: 0 0 10px rgba(255, 184, 77, 0.45);
+}
+
+.statusText {
+  color: rgb(230, 230, 242);
+  text-transform: capitalize;
+}
+
+.cell {
+  color: rgb(214, 214, 228);
+  line-height: 1.5;
+}

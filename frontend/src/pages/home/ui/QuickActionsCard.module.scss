@@ -1,0 +1,92 @@
+.card {
+  border-radius: 22px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.02)
+    ),
+    rgba(16, 18, 36, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(180, 100, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  color: rgb(160, 160, 180);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actionButton {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(135deg, rgba(255, 60, 100, 0.12), rgba(180, 80, 255, 0.12)),
+    rgba(255, 255, 255, 0.03);
+  color: rgb(255, 255, 255);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.actionButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 120, 220, 0.36);
+  box-shadow:
+    0 0 18px rgba(255, 80, 150, 0.14),
+    0 0 24px rgba(180, 80, 255, 0.12);
+}
+
+.actionIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: rgb(255, 255, 255);
+  background: linear-gradient(135deg, rgb(255, 60, 100), rgb(180, 80, 255));
+  box-shadow: 0 0 18px rgba(255, 80, 150, 0.24);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.actionLabel {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
