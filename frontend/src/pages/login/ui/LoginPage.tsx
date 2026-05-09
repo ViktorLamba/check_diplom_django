@@ -14,6 +14,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/shared/auth/AuthContext";
 import type { UserRole } from "@/shared/auth/types";
 
+const TEST_ROLE: UserRole = "admin";
+
 function getHomePathByRole(role: UserRole) {
   switch (role) {
     case "student":
@@ -80,7 +82,7 @@ export function LoginPage() {
       if ("user" in response) {
         console.log("Успешный вход:", response.user);
         await refreshUser();
-        navigate(getHomePathByRole(response.user.role));
+        navigate(getHomePathByRole(response.user.role ?? TEST_ROLE)); // потом убрать TEST_ROLE
         return;
       }
     } catch (error) {
@@ -103,7 +105,7 @@ export function LoginPage() {
 
       console.log("Вход подтвержден:", response.user);
       await refreshUser();
-      navigate(getHomePathByRole(response.user.role));
+      navigate(getHomePathByRole(response.user.role ?? TEST_ROLE)); // потом убрать TEST_ROLE
     } catch (error) {
       if (error instanceof Error) {
         setServerError(error.message);
