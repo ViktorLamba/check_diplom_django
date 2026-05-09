@@ -28,11 +28,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshUser = async () => {
     try {
       const response = await me();
-      setUser({
-        ...response.user,
-        role: response.user.role ?? "university",
-      });
-      //setUser(response.user);
+      setUser(response.user);
     } catch {
       setUser(null);
     }
