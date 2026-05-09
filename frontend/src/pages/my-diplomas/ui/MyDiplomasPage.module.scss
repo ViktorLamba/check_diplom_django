@@ -3,10 +3,7 @@
 }
 
 .card {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  padding: 28px;
+  padding: 22px;
   border-radius: 24px;
   border: 1px solid rgba(180, 120, 255, 0.22);
   background:
@@ -23,6 +20,12 @@
   -webkit-backdrop-filter: blur(18px);
 }
 
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .topBlock {
   display: flex;
   flex-direction: column;
@@ -32,39 +35,269 @@
 .title {
   margin: 0;
   color: rgb(255, 255, 255);
-  font-size: 1.35rem;
+  font-size: 1.22rem;
   font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   max-width: 620px;
   margin: 0;
   color: rgb(160, 160, 180);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.6;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 120, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.summaryLabel {
+  color: rgb(160, 160, 180);
+  font-size: 0.78rem;
+}
+
+.summaryValue {
+  color: rgb(255, 255, 255);
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.diplomaCard,
+.diplomaCardActive {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-height: 108px;
+  padding: 14px;
+  border-radius: 16px;
+  text-align: left;
+  border: 1px solid rgba(180, 120, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.diplomaCard:hover,
+.diplomaCardActive {
+  border-color: rgba(255, 80, 150, 0.28);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 18px rgba(180, 80, 255, 0.12);
+}
+
+.diplomaCard:hover {
+  transform: translateY(-1px);
+}
+
+.diplomaCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.diplomaNumber {
+  color: rgb(255, 255, 255);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.diplomaSpeciality {
+  color: rgb(226, 226, 238);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.diplomaMeta {
+  color: rgb(160, 160, 180);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.detailsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 344px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(180, 120, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.detailsHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.detailsTitle {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.detailsSubtitle {
+  max-width: 520px;
+  margin: 6px 0 0;
+  color: rgb(180, 180, 198);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 72px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 120, 255, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.detailItem span {
+  color: rgb(160, 160, 180);
+  font-size: 0.76rem;
+}
+
+.detailItem strong {
+  color: rgb(235, 235, 245);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.qrBlock {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin-top: auto;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px dashed rgba(180, 120, 255, 0.24);
+  background: rgba(180, 80, 255, 0.05);
+}
+
+.qrPlaceholder {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 120, 255, 0.2);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 50%, transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.08) 50%, transparent 50%),
+    rgba(255, 255, 255, 0.03);
+  background-size: 18px 18px;
+  color: rgb(220, 210, 255);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.qrTextBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qrTitle {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.qrText {
+  margin: 0;
+  color: rgb(180, 180, 198);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.statusValid,
+.statusPending,
+.statusRevoked {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusValid {
+  border: 1px solid rgba(88, 220, 160, 0.24);
+  background: rgba(88, 220, 160, 0.1);
+  color: rgb(145, 245, 195);
+}
+
+.statusPending {
+  border: 1px solid rgba(255, 190, 90, 0.24);
+  background: rgba(255, 190, 90, 0.1);
+  color: rgb(255, 215, 145);
+}
+
+.statusRevoked {
+  border: 1px solid rgba(255, 100, 140, 0.24);
+  background: rgba(255, 80, 120, 0.1);
+  color: rgb(255, 165, 185);
 }
 
 .emptyState {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 220px;
+  min-height: 180px;
   justify-content: center;
-  padding: 24px;
+  padding: 20px;
   border-radius: 18px;
   border: 1px solid rgba(180, 120, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
-}
-
-.statusBadge {
-  width: fit-content;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(180, 120, 255, 0.2);
-  background: rgba(180, 80, 255, 0.08);
-  color: rgb(220, 210, 255);
-  font-size: 0.82rem;
-  font-weight: 600;
 }
 
 .emptyTitle {
@@ -81,9 +314,32 @@
   line-height: 1.6;
 }
 
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .detailsCard {
+    min-height: auto;
+  }
+}
+
 @media (max-width: 760px) {
   .card {
-    padding: 22px;
-    border-radius: 22px;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .summaryGrid,
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailsHeader {
+    flex-direction: column;
+  }
+
+  .qrBlock {
+    grid-template-columns: 1fr;
   }
 }
