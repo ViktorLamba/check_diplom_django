@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/shared/auth/AuthContext";
 import type { UserRole } from "@/shared/auth/types";
 
-const TEST_ROLE = "student";
+const TEST_ROLE = "university";
 
 function getHomePathByRole(role: UserRole) {
   switch (role) {

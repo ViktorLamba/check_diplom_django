@@ -13,6 +13,7 @@ import { AdminUniversitiesPage } from "../pages/admin-universities/ui/AdminUnive
 import { StudentsPage } from "../pages/students/ui/StudentsPage";
 import { CreateDiplomaPage } from "../pages/diploma-create/ui/CreateDiplomaPage";
 import { MyDiplomasPage } from "../pages/my-diplomas/ui/MyDiplomasPage";
+import { ForbiddenPage } from "../pages/forbidden/ui/ForbiddenPage";
 
 export const router = createBrowserRouter([
   {
@@ -29,7 +30,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/forbidden",
-    element: <div>Доступ запрещён</div>,
+    element: <ForbiddenPage />,
   },
   {
     path: "/home",

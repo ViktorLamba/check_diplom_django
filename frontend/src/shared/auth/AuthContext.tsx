@@ -30,7 +30,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await me();
       setUser({
         ...response.user,
-        role: response.user.role ?? "student",
+        role: response.user.role ?? "university",
       });
       //setUser(response.user);
     } catch {
