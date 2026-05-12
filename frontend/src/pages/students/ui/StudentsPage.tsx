@@ -1,15 +1,24 @@
-import { useMemo, useState, type SubmitEvent } from "react";
+import { useMemo, useEffect, useState, type SubmitEvent } from "react";
 import {
-  initialStudents,
-  studentStatusLabels,
+  createStudent,
+  deleteStudent,
+  getStudents,
   type Student,
   type StudentStatus,
-} from "../model/studentsMock";
+} from "../model/studentsApi";
 import styles from "./StudentsPage.module.scss";
+
+const studentStatusLabels: Record<StudentStatus, string> = {
+  active: "Активен",
+  inactive: "Неактивен",
+};
+
+const pageSize = 10;
 
 type StudentForm = {
   fullName: string;
   email: string;
+  username: string;
   group: string;
   course: string;
 };
@@ -17,41 +26,55 @@ type StudentForm = {
 const initialForm: StudentForm = {
   fullName: "",
   email: "",
+  username: "",
   group: "",
   course: "",
 };
 
 export function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StudentStatus | "">("");
   const [form, setForm] = useState<StudentForm>(initialForm);
   const [formError, setFormError] = useState("");
+  const [listError, setListError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const filteredStudents = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        setIsLoading(true);
+        setListError("");
 
-    return students.filter((student) => {
-      const matchesStatus = statusFilter
-        ? student.status === statusFilter
-        : true;
+        const response = await getStudents({
+          search: search.trim(),
+          status: statusFilter,
+          page,
+          page_size: pageSize,
+        });
 
-      const matchesSearch = normalizedSearch
-        ? [
-            student.fullName,
-            student.email,
-            student.group,
-            String(student.course),
-            studentStatusLabels[student.status],
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedSearch)
-        : true;
+        setStudents(response.results);
+        setTotalCount(response.count);
+      } catch (error) {
+        setStudents([]);
+        setTotalCount(0);
+        setListError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить студентов.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [students, search, statusFilter]);
+    void loadStudents();
+  }, [search, statusFilter, page]);
+
+  const filteredStudents = useMemo(() => students, [students]);
 
   const activeCount = students.filter(
     (student) => student.status === "active",
@@ -73,11 +96,12 @@ export function StudentsPage() {
     }));
   };
 
-  const handleAddStudent = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleAddStudent = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const fullName = form.fullName.trim();
     const email = form.email.trim();
+    const username = form.username.trim();
     const group = form.group.trim();
     const course = Number(form.course);
 
@@ -86,32 +110,33 @@ export function StudentsPage() {
       return;
     }
 
-    const hasSameEmail = students.some(
-      (student) => student.email.toLowerCase() === email.toLowerCase(),
-    );
+    try {
+      setIsSubmitting(true);
+      setFormError("");
 
-    if (hasSameEmail) {
-      setFormError("Студент с таким email уже есть в списке.");
-      return;
+      const newStudent = await createStudent({
+        fullName,
+        email,
+        username: username || undefined,
+        group,
+        course,
+      });
+
+      setStudents((currentStudents) => [newStudent, ...currentStudents]);
+      setTotalCount((currentCount) => currentCount + 1);
+      setForm(initialForm);
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось добавить студента.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newStudent: Student = {
-      id: Date.now(),
-      fullName,
-      email,
-      group,
-      course,
-      diplomasCount: 0,
-      status: "active",
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-
-    setStudents((currentStudents) => [newStudent, ...currentStudents]);
-    setForm(initialForm);
-    setFormError("");
   };
 
-  const handleDelete = (student: Student) => {
+  const handleDelete = async (student: Student) => {
     const shouldDelete = window.confirm(
       `Удалить студента "${student.fullName}" из списка?`,
     );
@@ -120,9 +145,19 @@ export function StudentsPage() {
       return;
     }
 
-    setStudents((currentStudents) =>
-      currentStudents.filter((item) => item.id !== student.id),
-    );
+    try {
+      await deleteStudent(student.id);
+
+      setStudents((currentStudents) =>
+        currentStudents.filter((item) => item.id !== student.id),
+      );
+
+      setTotalCount((currentCount) => Math.max(currentCount - 1, 0));
+    } catch (error) {
+      setListError(
+        error instanceof Error ? error.message : "Не удалось удалить студента.",
+      );
+    }
   };
 
   return (
@@ -141,7 +176,7 @@ export function StudentsPage() {
           <div className={styles.summaryGrid}>
             <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Всего студентов</span>
-              <strong className={styles.summaryValue}>{students.length}</strong>
+              <strong className={styles.summaryValue}>{totalCount}</strong>
             </div>
 
             <div className={styles.summaryItem}>
@@ -171,6 +206,15 @@ export function StudentsPage() {
                 placeholder="ФИО студента"
                 onChange={(event) =>
                   updateFormField("fullName", event.target.value)
+                }
+              />
+              <input
+                className={styles.input}
+                type="text"
+                value={form.username}
+                placeholder="Логин студента"
+                onChange={(event) =>
+                  updateFormField("username", event.target.value)
                 }
               />
 
@@ -209,8 +253,12 @@ export function StudentsPage() {
 
             {formError && <p className={styles.errorText}>{formError}</p>}
 
-            <button className={styles.primaryButton} type="submit">
-              Добавить студента
+            <button
+              className={styles.primaryButton}
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Добавление..." : "Добавить студента"}
             </button>
           </form>
 
@@ -220,15 +268,19 @@ export function StudentsPage() {
               type="search"
               value={search}
               placeholder="Поиск по ФИО, email, группе или курсу"
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
             />
 
             <select
               className={styles.select}
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as StudentStatus | "")
-              }
+              onChange={(event) => {
+                setStatusFilter(event.target.value as StudentStatus | "");
+                setPage(1);
+              }}
             >
               <option value="">Все статусы</option>
               <option value="active">Активные</option>
@@ -236,7 +288,13 @@ export function StudentsPage() {
             </select>
           </div>
 
-          {filteredStudents.length > 0 ? (
+          {listError && <p className={styles.errorText}>{listError}</p>}
+
+          {isLoading ? (
+            <div className={styles.emptyState}>
+              <h3 className={styles.emptyTitle}>Загрузка студентов...</h3>
+            </div>
+          ) : filteredStudents.length > 0 ? (
             <div className={styles.table}>
               <div className={styles.headRow}>
                 <span>ФИО</span>
@@ -287,6 +345,29 @@ export function StudentsPage() {
                 Измените поисковый запрос, фильтр статуса или добавьте нового
                 студента.
               </p>
+            </div>
+          )}
+          {totalCount > pageSize && (
+            <div className={styles.toolbar}>
+              <button
+                className={styles.primaryButton}
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+              >
+                Назад
+              </button>
+
+              <span className={styles.subtitle}>Страница {page}</span>
+
+              <button
+                className={styles.primaryButton}
+                type="button"
+                disabled={page * pageSize >= totalCount}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+              >
+                Вперёд
+              </button>
             </div>
           )}
         </div>

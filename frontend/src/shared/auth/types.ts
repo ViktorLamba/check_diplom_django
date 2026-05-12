@@ -5,8 +5,8 @@ export type AuthUser = {
   username: string;
   email: string;
   role: UserRole;
-  university?: {
-    id: number;
-    name: string;
-  } | null;
+  universityId: number | null;
+  universityName: string | null;
+  studentId: number | null;
+  studentName: string | null;
 };

@@ -1,41 +1,60 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  diplomaStatusLabels,
-  initialDiplomas,
+  getDiplomas,
   type Diploma,
   type DiplomaStatus,
-} from "../model/diplomasMock";
+} from "../model/diplomasApi";
 import styles from "./DiplomasPage.module.scss";
 
+const diplomaStatusLabels: Record<DiplomaStatus, string> = {
+  valid: "Подтверждён",
+  pending: "На проверке",
+  revoked: "Отозван",
+};
+
+const pageSize = 10;
+
 export function DiplomasPage() {
-  const [diplomas, setDiplomas] = useState<Diploma[]>(initialDiplomas);
+  const [diplomas, setDiplomas] = useState<Diploma[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DiplomaStatus | "">("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [listError, setListError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const filteredDiplomas = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  useEffect(() => {
+    const loadDiplomas = async () => {
+      try {
+        setIsLoading(true);
+        setListError("");
 
-    return diplomas.filter((diploma) => {
-      const matchesStatus = statusFilter
-        ? diploma.status === statusFilter
-        : true;
+        const response = await getDiplomas({
+          search: search.trim(),
+          status: statusFilter,
+          page,
+          page_size: pageSize,
+        });
 
-      const matchesSearch = normalizedSearch
-        ? [
-            diploma.number,
-            diploma.owner,
-            diploma.universityName,
-            diploma.speciality,
-            diplomaStatusLabels[diploma.status],
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedSearch)
-        : true;
+        setDiplomas(response.results);
+        setTotalCount(response.count);
+      } catch (error) {
+        setDiplomas([]);
+        setTotalCount(0);
+        setListError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить дипломы.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [diplomas, search, statusFilter]);
+    void loadDiplomas();
+  }, [search, statusFilter, page]);
+
+  const filteredDiplomas = useMemo(() => diplomas, [diplomas]);
 
   const validCount = diplomas.filter(
     (diploma) => diploma.status === "valid",
@@ -48,20 +67,6 @@ export function DiplomasPage() {
   const revokedCount = diplomas.filter(
     (diploma) => diploma.status === "revoked",
   ).length;
-
-  const handleDelete = (diploma: Diploma) => {
-    const shouldDelete = window.confirm(
-      `Удалить диплом "${diploma.number}" из списка?`,
-    );
-
-    if (!shouldDelete) {
-      return;
-    }
-
-    setDiplomas((currentDiplomas) =>
-      currentDiplomas.filter((item) => item.id !== diploma.id),
-    );
-  };
 
   return (
     <section className={styles.page}>
@@ -77,7 +82,7 @@ export function DiplomasPage() {
           <div className={styles.summaryGrid}>
             <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Всего дипломов</span>
-              <strong className={styles.summaryValue}>{diplomas.length}</strong>
+              <strong className={styles.summaryValue}>{totalCount}</strong>
             </div>
 
             <div className={styles.summaryItem}>
@@ -102,15 +107,19 @@ export function DiplomasPage() {
               type="search"
               value={search}
               placeholder="Поиск по номеру, владельцу, вузу или специальности"
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
             />
 
             <select
               className={styles.select}
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as DiplomaStatus | "")
-              }
+              onChange={(event) => {
+                setStatusFilter(event.target.value as DiplomaStatus | "");
+                setPage(1);
+              }}
             >
               <option value="">Все статусы</option>
               <option value="valid">Подтверждённые</option>
@@ -119,7 +128,13 @@ export function DiplomasPage() {
             </select>
           </div>
 
-          {filteredDiplomas.length > 0 ? (
+          {listError && <p className={styles.emptyText}>{listError}</p>}
+
+          {isLoading ? (
+            <div className={styles.emptyState}>
+              <h3 className={styles.emptyTitle}>Загрузка дипломов...</h3>
+            </div>
+          ) : filteredDiplomas.length > 0 ? (
             <div className={styles.table}>
               <div className={styles.headRow}>
                 <span>Номер</span>
@@ -128,7 +143,7 @@ export function DiplomasPage() {
                 <span>Специальность</span>
                 <span>Дата выдачи</span>
                 <span>Статус</span>
-                <span>Действия</span>
+                <span>QR</span>
               </div>
 
               <div className={styles.body}>
@@ -154,14 +169,8 @@ export function DiplomasPage() {
                         {diplomaStatusLabels[diploma.status]}
                       </span>
                     </span>
-                    <span className={styles.actions}>
-                      <button
-                        className={styles.dangerButton}
-                        type="button"
-                        onClick={() => handleDelete(diploma)}
-                      >
-                        Удалить
-                      </button>
+                    <span className={styles.cell}>
+                      {diploma.qrCodeUrl ? "Доступен" : "Нет"}
                     </span>
                   </div>
                 ))}
@@ -174,6 +183,30 @@ export function DiplomasPage() {
                 Измените поисковый запрос, фильтр статуса или дождитесь
                 добавления новых дипломов.
               </p>
+            </div>
+          )}
+
+          {totalCount > pageSize && (
+            <div className={styles.toolbar}>
+              <button
+                className={styles.dangerButton}
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+              >
+                Назад
+              </button>
+
+              <span className={styles.sectionSubtitle}>Страница {page}</span>
+
+              <button
+                className={styles.dangerButton}
+                type="button"
+                disabled={page * pageSize >= totalCount}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+              >
+                Вперёд
+              </button>
             </div>
           )}
         </div>
