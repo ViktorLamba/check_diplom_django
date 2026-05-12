@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import Client, TestCase
 
 from .models import Diploma, Student, University
@@ -62,6 +63,7 @@ class RegistryApiTests(TestCase):
                 {
                     'fullName': 'Сидорова Анна Сергеевна',
                     'email': 'sidorova@student.msu.ru',
+                    'username': 'sidorova',
                     'group': 'ИВТ-402',
                     'course': 4,
                     'universityId': self.other_university.id,
@@ -74,13 +76,17 @@ class RegistryApiTests(TestCase):
         student = Student.objects.get(email='sidorova@student.msu.ru')
         self.assertEqual(student.university, self.university)
         self.assertIsNotNone(student.user)
-        self.assertEqual(student.user.username, 'sidorova@student.msu.ru')
+        self.assertEqual(student.user.username, 'sidorova')
         self.assertEqual(response.json()['userId'], student.user_id)
-        self.assertEqual(response.json()['username'], 'sidorova@student.msu.ru')
-        self.assertIn('temporaryPassword', response.json())
+        self.assertEqual(response.json()['username'], 'sidorova')
+        self.assertNotIn('temporaryPassword', response.json())
         self.assertEqual(response.json()['diplomasCount'], 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['sidorova@student.msu.ru'])
+        self.assertIn('Логин: sidorova', mail.outbox[0].body)
+        self.assertIn('Пароль:', mail.outbox[0].body)
 
-    def test_create_student_can_accept_explicit_credentials(self):
+    def test_create_student_ignores_explicit_credentials_and_emails_generated_password(self):
         response = self.client.post(
             '/api/students/',
             data=json.dumps(
@@ -99,7 +105,10 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()['username'], 'petrova')
         self.assertNotIn('temporaryPassword', response.json())
-        self.assertTrue(User.objects.get(username='petrova').check_password('StudentPass123'))
+        user = User.objects.get(username='petrova')
+        self.assertFalse(user.check_password('StudentPass123'))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Логин: petrova', mail.outbox[0].body)
 
     def test_search_and_status_filters_students(self):
         Student.objects.create(

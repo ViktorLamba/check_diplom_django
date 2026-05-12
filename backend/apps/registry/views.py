@@ -1,8 +1,10 @@
 import json
-from secrets import token_urlsafe
 from datetime import date
+from secrets import token_urlsafe
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.core.paginator import EmptyPage, Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -147,15 +149,11 @@ def students_view(request):
     email = (data.get('email') or '').strip()
     group = (data.get('group') or '').strip()
     course = data.get('course')
-    username = (data.get('username') or email).strip()
-    password = data.get('password') or token_urlsafe(12)
-    password_was_generated = 'password' not in data
+    username = (data.get('username') or '').strip()
+    password = token_urlsafe(12)
 
-    if not full_name or not email or not group or course in (None, ''):
-        return JsonResponse({'detail': 'Поля fullName, email, group и course обязательны.'}, status=400)
-
-    if not username:
-        return JsonResponse({'detail': 'Поле username обязательно.'}, status=400)
+    if not full_name or not email or not username or not group or course in (None, ''):
+        return JsonResponse({'detail': 'Поля fullName, email, username, group и course обязательны.'}, status=400)
 
     try:
         course = int(course)
@@ -184,11 +182,22 @@ def students_view(request):
     except IntegrityError:
         return JsonResponse({'detail': 'Студент или пользователь с такими данными уже существует.'}, status=400)
 
+    send_mail(
+        subject='Доступ к личному кабинету студента',
+        message=(
+            f'Здравствуйте, {full_name}.\n\n'
+            'Для вас создан доступ к личному кабинету студента.\n'
+            f'Логин: {username}\n'
+            f'Пароль: {password}\n'
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
     student.diplomas_count = 0
     payload = _student_payload(student)
     payload['username'] = user.username
-    if password_was_generated:
-        payload['temporaryPassword'] = password
     return JsonResponse(payload, status=201)
 
 
