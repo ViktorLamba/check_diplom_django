@@ -23,10 +23,27 @@ def _parse_json_body(request):
 
 
 def _user_payload(user):
+    university = getattr(user, 'university', None)
+    student = getattr(user, 'student', None)
+
+    if user.is_staff or user.is_superuser:
+        role = 'admin'
+    elif university is not None:
+        role = 'university'
+    elif student is not None:
+        role = 'student'
+    else:
+        role = 'user'
+
     return {
         'id': user.id,
         'username': user.username,
         'email': user.email,
+        'role': role,
+        'universityId': university.id if university is not None else None,
+        'universityName': university.name if university is not None else None,
+        'studentId': student.id if student is not None else None,
+        'studentName': student.full_name if student is not None else None,
     }
 
 
