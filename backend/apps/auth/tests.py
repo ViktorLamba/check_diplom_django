@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
 from .models import TwoFactorCode
+from apps.registry.models import Student, University
 
 User = get_user_model()
 
@@ -119,6 +120,55 @@ class AuthApiTests(TestCase):
 
         me_response = self.client.get(self.me_url)
         self.assertEqual(me_response.status_code, 200)
+        self.assertEqual(me_response.json()['user']['role'], 'admin')
+        self.assertIsNone(me_response.json()['user']['universityId'])
+
+    def test_me_returns_university_role_payload(self):
+        user = User.objects.create_user(
+            username='university_user',
+            email='university@example.com',
+            password='StrongPass123',
+        )
+        university = University.objects.create(user=user, name='МГУ им. М. В. Ломоносова')
+        self.client.force_login(user)
+
+        response = self.client.get(self.me_url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()['user']
+        self.assertEqual(payload['role'], 'university')
+        self.assertEqual(payload['universityId'], university.id)
+        self.assertEqual(payload['universityName'], university.name)
+
+    def test_me_returns_student_role_payload(self):
+        university_user = User.objects.create_user(
+            username='university_user',
+            email='university@example.com',
+            password='StrongPass123',
+        )
+        university = University.objects.create(user=university_user, name='МГУ им. М. В. Ломоносова')
+        student_user = User.objects.create_user(
+            username='student_user',
+            email='student@example.com',
+            password='StrongPass123',
+        )
+        student = Student.objects.create(
+            university=university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='student@example.com',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(student_user)
+
+        response = self.client.get(self.me_url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()['user']
+        self.assertEqual(payload['role'], 'student')
+        self.assertEqual(payload['studentId'], student.id)
+        self.assertEqual(payload['studentName'], student.full_name)
 
     def test_two_factor_code_cannot_be_reused(self):
         User.objects.create_user(

@@ -29,8 +29,11 @@ jobs:
       - name: Lint
         run: flake8 backend
 
+      - name: Check migrations
+        run: python backend/manage.py makemigrations --check --dry-run
+
       - name: Run Django tests
-        run: python backend/manage.py test
+        run: python backend/manage.py test apps.auth apps.registry
 
   build-and-push-images:
     runs-on: ubuntu-latest
