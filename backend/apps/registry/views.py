@@ -12,7 +12,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
 
-from .models import Diploma, Student
+from .models import Diploma, Student, University
 
 User = get_user_model()
 
@@ -47,6 +47,16 @@ def _current_student(request):
     return student, None
 
 
+def _require_admin(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        return JsonResponse({'detail': 'Доступно только администратору.'}, status=403)
+
+    return None
+
+
 def _positive_int(value, default, max_value=None):
     try:
         parsed = int(value)
@@ -71,6 +81,17 @@ def _student_payload(student):
         'diplomasCount': getattr(student, 'diplomas_count', student.diplomas.count()),
         'status': student.status,
         'createdAt': student.created_at.date().isoformat(),
+    }
+
+
+def _university_payload(university):
+    return {
+        'id': university.id,
+        'userId': university.user_id,
+        'name': university.name,
+        'username': university.user.username,
+        'email': university.user.email,
+        'createdAt': university.created_at.date().isoformat(),
     }
 
 
@@ -107,6 +128,69 @@ def _paginated_response(queryset, request, payload_factory):
         },
         status=200,
     )
+
+
+@require_http_methods(['GET', 'POST'])
+def universities_view(request):
+    error = _require_admin(request)
+    if error is not None:
+        return error
+
+    if request.method == 'GET':
+        universities = list(University.objects.select_related('user').order_by('name', 'id'))
+        search = (request.GET.get('search') or '').strip()
+        if search:
+            search_lower = search.lower()
+            universities = [
+                university for university in universities
+                if search_lower in university.name.lower()
+                or search_lower in university.user.username.lower()
+                or search_lower in university.user.email.lower()
+            ]
+
+        return _paginated_response(universities, request, _university_payload)
+
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip()
+    username = (data.get('username') or '').strip()
+    password = token_urlsafe(12)
+
+    if not name or not email or not username:
+        return JsonResponse({'detail': 'Поля name, email и username обязательны.'}, status=400)
+
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                is_staff=False,
+            )
+            university = University.objects.create(
+                user=user,
+                name=name,
+            )
+    except IntegrityError:
+        return JsonResponse({'detail': 'Вуз или пользователь с такими данными уже существует.'}, status=400)
+
+    send_mail(
+        subject='Доступ к личному кабинету вуза',
+        message=(
+            f'Здравствуйте.\n\n'
+            f'Для вуза "{name}" создан доступ к личному кабинету.\n'
+            f'Логин: {username}\n'
+            f'Пароль: {password}\n'
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+    return JsonResponse(_university_payload(university), status=201)
 
 
 @require_http_methods(['GET', 'POST'])

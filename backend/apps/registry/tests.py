@@ -34,6 +34,75 @@ class RegistryApiTests(TestCase):
 
         self.client.force_login(self.user)
 
+    def test_admin_can_create_university_account_and_email_generated_password(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.post(
+            '/api/universities/',
+            data=json.dumps(
+                {
+                    'name': 'КФУ',
+                    'email': 'office@kfu.ru',
+                    'username': 'kfu',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload['name'], 'КФУ')
+        self.assertEqual(payload['username'], 'kfu')
+        self.assertEqual(payload['email'], 'office@kfu.ru')
+        self.assertNotIn('password', payload)
+        self.assertNotIn('temporaryPassword', payload)
+
+        university = University.objects.get(name='КФУ')
+        self.assertEqual(university.user.username, 'kfu')
+        self.assertEqual(university.user.email, 'office@kfu.ru')
+        self.assertEqual(payload['userId'], university.user_id)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['office@kfu.ru'])
+        self.assertIn('Логин: kfu', mail.outbox[0].body)
+        self.assertIn('Пароль:', mail.outbox[0].body)
+
+    def test_university_user_cannot_create_university_account(self):
+        response = self.client.post(
+            '/api/universities/',
+            data=json.dumps(
+                {
+                    'name': 'КФУ',
+                    'email': 'office@kfu.ru',
+                    'username': 'kfu',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(University.objects.filter(name='КФУ').exists())
+
+    def test_admin_can_list_universities(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/universities/?search=мгу')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 1)
+        self.assertEqual(response.json()['results'][0]['name'], self.university.name)
+
     def test_students_are_filtered_by_current_user_university(self):
         own_student = Student.objects.create(
             university=self.university,
