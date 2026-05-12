@@ -66,13 +66,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # База данных.
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_db_name = os.getenv('DB_NAME') or os.getenv('POSTGRES_DB')
+_db_user = os.getenv('DB_USER') or os.getenv('POSTGRES_USER', '')
+_db_password = os.getenv('DB_PASSWORD') or os.getenv('POSTGRES_PASSWORD', '')
+if _db_name:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _db_name,
+            'USER': _db_user,
+            'PASSWORD': _db_password,
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Валидаторы паролей.
