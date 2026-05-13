@@ -1,8 +1,9 @@
-import { useMemo, useEffect, useState, type SubmitEvent } from "react";
+import { useMemo, useEffect, useState, type FormEvent } from "react";
 import {
   createStudent,
   deleteStudent,
   getStudents,
+  updateStudent,
   type Student,
   type StudentStatus,
 } from "../model/studentsApi";
@@ -21,6 +22,7 @@ type StudentForm = {
   username: string;
   group: string;
   course: string;
+  status: StudentStatus;
 };
 
 const initialForm: StudentForm = {
@@ -29,6 +31,7 @@ const initialForm: StudentForm = {
   username: "",
   group: "",
   course: "",
+  status: "active",
 };
 
 export function StudentsPage() {
@@ -42,6 +45,7 @@ export function StudentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -89,14 +93,36 @@ export function StudentsPage() {
     0,
   );
 
-  const updateFormField = (field: keyof StudentForm, value: string) => {
+  const updateFormField = <K extends keyof StudentForm>(
+    field: K,
+    value: StudentForm[K],
+  ) => {
     setForm((currentForm) => ({
       ...currentForm,
       [field]: value,
     }));
   };
 
-  const handleAddStudent = async (event: SubmitEvent<HTMLFormElement>) => {
+  const resetForm = () => {
+    setForm(initialForm);
+    setEditingStudent(null);
+    setFormError("");
+  };
+
+  const handleEdit = (student: Student) => {
+    setEditingStudent(student);
+    setFormError("");
+    setForm({
+      fullName: student.fullName,
+      email: student.email,
+      username: "",
+      group: student.group,
+      course: String(student.course),
+      status: student.status,
+    });
+  };
+
+  const handleSubmitStudent = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const fullName = form.fullName.trim();
@@ -110,26 +136,50 @@ export function StudentsPage() {
       return;
     }
 
+    if (!editingStudent && !username) {
+      setFormError("Заполните логин студента.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setFormError("");
 
-      const newStudent = await createStudent({
-        fullName,
-        email,
-        username: username || undefined,
-        group,
-        course,
-      });
+      if (editingStudent) {
+        const updatedStudent = await updateStudent(editingStudent.id, {
+          fullName,
+          email,
+          group,
+          course,
+          status: form.status,
+        });
 
-      setStudents((currentStudents) => [newStudent, ...currentStudents]);
-      setTotalCount((currentCount) => currentCount + 1);
-      setForm(initialForm);
+        setStudents((currentStudents) =>
+          currentStudents.map((student) =>
+            student.id === updatedStudent.id ? updatedStudent : student,
+          ),
+        );
+      } else {
+        const newStudent = await createStudent({
+          fullName,
+          email,
+          username,
+          group,
+          course,
+        });
+
+        setStudents((currentStudents) => [newStudent, ...currentStudents]);
+        setTotalCount((currentCount) => currentCount + 1);
+      }
+
+      resetForm();
     } catch (error) {
       setFormError(
         error instanceof Error
           ? error.message
-          : "Не удалось добавить студента.",
+          : editingStudent
+            ? "Не удалось обновить студента."
+            : "Не удалось добавить студента.",
       );
     } finally {
       setIsSubmitting(false);
@@ -146,6 +196,8 @@ export function StudentsPage() {
     }
 
     try {
+      setListError("");
+
       await deleteStudent(student.id);
 
       setStudents((currentStudents) =>
@@ -153,6 +205,10 @@ export function StudentsPage() {
       );
 
       setTotalCount((currentCount) => Math.max(currentCount - 1, 0));
+
+      if (editingStudent?.id === student.id) {
+        resetForm();
+      }
     } catch (error) {
       setListError(
         error instanceof Error ? error.message : "Не удалось удалить студента.",
@@ -197,7 +253,7 @@ export function StudentsPage() {
             </div>
           </div>
 
-          <form className={styles.form} onSubmit={handleAddStudent}>
+          <form className={styles.form} onSubmit={handleSubmitStudent}>
             <div className={styles.formGrid}>
               <input
                 className={styles.input}
@@ -208,15 +264,18 @@ export function StudentsPage() {
                   updateFormField("fullName", event.target.value)
                 }
               />
-              <input
-                className={styles.input}
-                type="text"
-                value={form.username}
-                placeholder="Логин студента"
-                onChange={(event) =>
-                  updateFormField("username", event.target.value)
-                }
-              />
+
+              {!editingStudent && (
+                <input
+                  className={styles.input}
+                  type="text"
+                  value={form.username}
+                  placeholder="Логин студента"
+                  onChange={(event) =>
+                    updateFormField("username", event.target.value)
+                  }
+                />
+              )}
 
               <input
                 className={styles.input}
@@ -249,6 +308,22 @@ export function StudentsPage() {
                   updateFormField("course", event.target.value)
                 }
               />
+
+              {editingStudent && (
+                <select
+                  className={styles.select}
+                  value={form.status}
+                  onChange={(event) =>
+                    updateFormField(
+                      "status",
+                      event.target.value as StudentStatus,
+                    )
+                  }
+                >
+                  <option value="active">Активен</option>
+                  <option value="inactive">Неактивен</option>
+                </select>
+              )}
             </div>
 
             {formError && <p className={styles.errorText}>{formError}</p>}
@@ -258,8 +333,22 @@ export function StudentsPage() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Добавление..." : "Добавить студента"}
+              {isSubmitting
+                ? "Сохранение..."
+                : editingStudent
+                  ? "Сохранить изменения"
+                  : "Добавить студента"}
             </button>
+
+            {editingStudent && (
+              <button
+                className={styles.dangerButton}
+                type="button"
+                onClick={resetForm}
+              >
+                Отменить редактирование
+              </button>
+            )}
           </form>
 
           <div className={styles.toolbar}>
@@ -327,6 +416,14 @@ export function StudentsPage() {
                     </span>
                     <span className={styles.actions}>
                       <button
+                        className={styles.primaryButton}
+                        type="button"
+                        onClick={() => handleEdit(student)}
+                      >
+                        Изменить
+                      </button>
+
+                      <button
                         className={styles.dangerButton}
                         type="button"
                         onClick={() => handleDelete(student)}
@@ -347,6 +444,7 @@ export function StudentsPage() {
               </p>
             </div>
           )}
+
           {totalCount > pageSize && (
             <div className={styles.toolbar}>
               <button

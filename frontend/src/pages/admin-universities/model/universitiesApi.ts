@@ -38,3 +38,18 @@ export function createUniversity(payload: CreateUniversityPayload) {
     body: payload,
   });
 }
+
+export type UpdateUniversityPayload = CreateUniversityPayload;
+
+export function updateUniversity(id: number, payload: UpdateUniversityPayload) {
+  return request<University>(`/api/universities/${id}/`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteUniversity(id: number) {
+  return request<void>(`/api/universities/${id}/`, {
+    method: "DELETE",
+  });
+}

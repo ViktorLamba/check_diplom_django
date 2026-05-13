@@ -243,8 +243,8 @@
     62px
     76px
     96px
-    74px;
-  min-width: 790px;
+    minmax(170px, 0.9fr);
+  min-width: 900px;
   gap: 8px;
   align-items: center;
 }
@@ -310,7 +310,20 @@
 
 .actions {
   display: flex;
+  align-items: center;
   justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.actions .primaryButton,
+.actions .dangerButton {
+  width: 92px;
+  min-height: 30px;
+  padding: 0 9px;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  justify-content: center;
 }
 
 .dangerButton {
