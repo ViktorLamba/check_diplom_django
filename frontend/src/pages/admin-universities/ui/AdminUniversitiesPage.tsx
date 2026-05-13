@@ -1,89 +1,95 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  initialUniversities,
+  createUniversity,
+  getUniversities,
   type University,
-} from "../model/universitiesMock";
+} from "../model/universitiesApi";
 import styles from "./AdminUniversitiesPage.module.scss";
 
-export function AdminUniversitiesPage() {
-  const [universities, setUniversities] =
-    useState<University[]>(initialUniversities);
+const pageSize = 10;
 
+export function AdminUniversitiesPage() {
+  const [universities, setUniversities] = useState<University[]>([]);
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formError, setFormError] = useState("");
+  const [listError, setListError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [form, setForm] = useState({
     name: "",
-    city: "",
-    representative: "",
+    email: "",
+    username: "",
   });
 
-  const filteredUniversities = useMemo(() => {
-    const normalizedSearch = search.toLowerCase();
+  useEffect(() => {
+    const loadUniversities = async () => {
+      try {
+        setIsLoading(true);
+        setListError("");
 
-    if (!normalizedSearch) {
-      return universities;
-    }
+        const response = await getUniversities({
+          search: search.trim(),
+          page,
+          page_size: pageSize,
+        });
 
-    return universities.filter((university) =>
-      [university.name, university.city, university.representative]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch),
-    );
-  }, [search, universities]);
+        setUniversities(response.results);
+        setTotalCount(response.count);
+      } catch (error) {
+        setUniversities([]);
+        setTotalCount(0);
+        setListError(
+          error instanceof Error ? error.message : "Не удалось загрузить вузы.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const activeCount = universities.filter(
-    (university) => university.status === "active",
-  ).length;
+    void loadUniversities();
+  }, [search, page]);
 
-  const diplomasCount = universities.reduce(
-    (total, university) => total + university.diplomasCount,
-    0,
-  );
+  const filteredUniversities = useMemo(() => universities, [universities]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const name = form.name.trim();
-    const city = form.city.trim();
-    const representative = form.representative.trim();
+    const email = form.email.trim();
+    const username = form.username.trim();
 
-    if (!name || !city || !representative) {
-      setFormError("Пожалуйста, заполните все поля");
+    if (!name || !email || !username) {
+      setFormError("Заполните название вуза, email и логин.");
       return;
     }
 
-    setUniversities((currentUniversities) => [
-      {
-        id: Date.now(),
+    try {
+      setIsSubmitting(true);
+      setFormError("");
+
+      const newUniversity = await createUniversity({
         name,
-        city,
-        representative,
-        studentsCount: 0,
-        diplomasCount: 0,
-        status: "active",
-      },
-      ...currentUniversities,
-    ]);
+        email,
+        username,
+      });
 
-    setForm({ name: "", city: "", representative: "" });
-    setFormError("");
-    setIsFormOpen(false);
-  };
-
-  const handleDelete = (university: University) => {
-    const shouldDelete = window.confirm(
-      `Удалить вуз "${university.name}" из списка?`,
-    );
-
-    if (!shouldDelete) {
-      return;
+      setUniversities((currentUniversities) => [
+        newUniversity,
+        ...currentUniversities,
+      ]);
+      setTotalCount((currentCount) => currentCount + 1);
+      setForm({ name: "", email: "", username: "" });
+      setIsFormOpen(false);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Не удалось создать вуз.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setUniversities((currentUniversities) =>
-      currentUniversities.filter((item) => item.id !== university.id),
-    );
   };
 
   return (
@@ -93,7 +99,7 @@ export function AdminUniversitiesPage() {
           <div>
             <h2 className={styles.title}>Вузы</h2>
             <p className={styles.subtitle}>
-              Регистрация вузов и управление представителями образовательных
+              Регистрация вузов и управление доступом образовательных
               организаций.
             </p>
           </div>
@@ -113,19 +119,19 @@ export function AdminUniversitiesPage() {
         <div className={styles.summaryGrid}>
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Всего вузов</span>
+            <strong className={styles.summaryValue}>{totalCount}</strong>
+          </div>
+
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>На странице</span>
             <strong className={styles.summaryValue}>
               {universities.length}
             </strong>
           </div>
 
           <div className={styles.summaryItem}>
-            <span className={styles.summaryLabel}>Активных</span>
-            <strong className={styles.summaryValue}>{activeCount}</strong>
-          </div>
-
-          <div className={styles.summaryItem}>
-            <span className={styles.summaryLabel}>Дипломов</span>
-            <strong className={styles.summaryValue}>{diplomasCount}</strong>
+            <span className={styles.summaryLabel}>Страница</span>
+            <strong className={styles.summaryValue}>{page}</strong>
           </div>
         </div>
 
@@ -151,38 +157,38 @@ export function AdminUniversitiesPage() {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="universityCity">
-                Город
+              <label className={styles.label} htmlFor="universityEmail">
+                Email
               </label>
               <input
-                id="universityCity"
+                id="universityEmail"
                 className={styles.input}
-                type="text"
-                value={form.city}
-                placeholder="Город"
+                type="email"
+                value={form.email}
+                placeholder="office@university.ru"
                 onChange={(event) =>
                   setForm((currentForm) => ({
                     ...currentForm,
-                    city: event.target.value,
+                    email: event.target.value,
                   }))
                 }
               />
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="representative">
-                Представитель
+              <label className={styles.label} htmlFor="universityUsername">
+                Логин
               </label>
               <input
-                id="representative"
+                id="universityUsername"
                 className={styles.input}
                 type="text"
-                value={form.representative}
-                placeholder="ФИО представителя"
+                value={form.username}
+                placeholder="msu"
                 onChange={(event) =>
                   setForm((currentForm) => ({
                     ...currentForm,
-                    representative: event.target.value,
+                    username: event.target.value,
                   }))
                 }
               />
@@ -190,8 +196,12 @@ export function AdminUniversitiesPage() {
 
             {formError && <p className={styles.formError}>{formError}</p>}
 
-            <button className={styles.primaryButton} type="submit">
-              Сохранить вуз
+            <button
+              className={styles.primaryButton}
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Сохранение..." : "Сохранить вуз"}
             </button>
           </form>
         )}
@@ -201,59 +211,36 @@ export function AdminUniversitiesPage() {
             className={styles.input}
             type="search"
             value={search}
-            placeholder="Поиск по названию, городу или представителю"
-            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Поиск по названию, логину или email"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
           />
         </div>
 
-        {filteredUniversities.length > 0 ? (
+        {listError && <p className={styles.formError}>{listError}</p>}
+
+        {isLoading ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>Загрузка вузов...</h3>
+          </div>
+        ) : filteredUniversities.length > 0 ? (
           <div className={styles.table}>
             <div className={styles.headRow}>
               <span>Вуз</span>
-              <span>Город</span>
-              <span>Представитель</span>
-              <span>Студенты</span>
-              <span>Дипломы</span>
-              <span>Статус</span>
-              <span>Действия</span>
+              <span>Логин</span>
+              <span>Email</span>
+              <span>Дата создания</span>
             </div>
 
             <div className={styles.body}>
               {filteredUniversities.map((university) => (
                 <div className={styles.row} key={university.id}>
                   <span className={styles.name}>{university.name}</span>
-                  <span className={styles.cell}>{university.city}</span>
-                  <span className={styles.cell}>
-                    {university.representative}
-                  </span>
-                  <span className={styles.cell}>
-                    {university.studentsCount}
-                  </span>
-                  <span className={styles.cell}>
-                    {university.diplomasCount}
-                  </span>
-
-                  <span>
-                    <span
-                      className={
-                        university.status === "active"
-                          ? styles.statusActive
-                          : styles.statusPaused
-                      }
-                    >
-                      {university.status === "active" ? "Активен" : "Пауза"}
-                    </span>
-                  </span>
-
-                  <span className={styles.actions}>
-                    <button
-                      className={styles.dangerButton}
-                      type="button"
-                      onClick={() => handleDelete(university)}
-                    >
-                      Удалить
-                    </button>
-                  </span>
+                  <span className={styles.cell}>{university.username}</span>
+                  <span className={styles.cell}>{university.email}</span>
+                  <span className={styles.cell}>{university.createdAt}</span>
                 </div>
               ))}
             </div>
@@ -264,6 +251,28 @@ export function AdminUniversitiesPage() {
             <p className={styles.emptyText}>
               Попробуйте изменить поисковый запрос или добавьте новый вуз.
             </p>
+          </div>
+        )}
+
+        {totalCount > pageSize && (
+          <div className={styles.toolbar}>
+            <button
+              className={styles.primaryButton}
+              type="button"
+              disabled={page === 1}
+              onClick={() => setPage((currentPage) => currentPage - 1)}
+            >
+              Назад
+            </button>
+
+            <button
+              className={styles.primaryButton}
+              type="button"
+              disabled={page * pageSize >= totalCount}
+              onClick={() => setPage((currentPage) => currentPage + 1)}
+            >
+              Вперёд
+            </button>
           </div>
         )}
       </div>

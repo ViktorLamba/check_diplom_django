@@ -1,11 +1,10 @@
-import { useMemo, useState, type SubmitEvent } from "react";
+import { useEffect, useMemo, useState, type SubmitEvent } from "react";
 import {
-  createdDiplomasMock,
-  createdDiplomaStatusLabels,
-  diplomaCreateStudentsMock,
-  type CreatedDiploma,
-  type CreatedDiplomaStatus,
-} from "../model/createDiplomaMock";
+  createDiploma,
+  type Diploma,
+  type DiplomaStatus,
+} from "@/pages/diplomas/model/diplomasApi";
+import { getStudents, type Student } from "@/pages/students/model/studentsApi";
 import styles from "./CreateDiplomaPage.module.scss";
 
 type DiplomaForm = {
@@ -24,19 +23,54 @@ const initialForm: DiplomaForm = {
   issuedAt: "",
 };
 
+const diplomaStatusLabels: Record<DiplomaStatus, string> = {
+  valid: "Подтверждён",
+  pending: "На проверке",
+  revoked: "Отозван",
+};
+
 export function CreateDiplomaPage() {
-  const [createdDiplomas, setCreatedDiplomas] =
-    useState<CreatedDiploma[]>(createdDiplomasMock);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [recentDiplomas, setRecentDiplomas] = useState<Diploma[]>([]);
   const [form, setForm] = useState<DiplomaForm>(initialForm);
   const [formError, setFormError] = useState("");
-  const [lastCreatedDiploma, setLastCreatedDiploma] =
-    useState<CreatedDiploma | null>(null);
+  const [studentsError, setStudentsError] = useState("");
+  const [isStudentsLoading, setIsStudentsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastCreatedDiploma, setLastCreatedDiploma] = useState<Diploma | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        setIsStudentsLoading(true);
+        setStudentsError("");
+
+        const response = await getStudents({
+          page: 1,
+          page_size: 100,
+        });
+
+        setStudents(response.results);
+      } catch (error) {
+        setStudents([]);
+        setStudentsError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить студентов.",
+        );
+      } finally {
+        setIsStudentsLoading(false);
+      }
+    };
+
+    void loadStudents();
+  }, []);
 
   const selectedStudent = useMemo(() => {
-    return diplomaCreateStudentsMock.find(
-      (student) => student.id === Number(form.studentId),
-    );
-  }, [form.studentId]);
+    return students.find((student) => student.id === Number(form.studentId));
+  }, [form.studentId, students]);
 
   const updateFormField = (field: keyof DiplomaForm, value: string) => {
     setForm((currentForm) => ({
@@ -45,7 +79,7 @@ export function CreateDiplomaPage() {
     }));
   };
 
-  const getStatusClassName = (status: CreatedDiplomaStatus) => {
+  const getStatusClassName = (status: DiplomaStatus) => {
     if (status === "valid") {
       return styles.statusValid;
     }
@@ -53,52 +87,47 @@ export function CreateDiplomaPage() {
     return styles.statusPending;
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const studentId = Number(form.studentId);
     const number = form.number.trim();
     const speciality = form.speciality.trim();
     const qualification = form.qualification.trim();
     const issuedAt = form.issuedAt;
 
-    if (
-      !selectedStudent ||
-      !number ||
-      !speciality ||
-      !qualification ||
-      !issuedAt
-    ) {
+    if (!studentId || !number || !speciality || !qualification || !issuedAt) {
       setFormError(
         "Заполните студента, номер диплома, специальность, квалификацию и дату выдачи.",
       );
       return;
     }
 
-    const hasSameNumber = createdDiplomas.some(
-      (diploma) => diploma.number.toLowerCase() === number.toLowerCase(),
-    );
+    try {
+      setIsSubmitting(true);
+      setFormError("");
 
-    if (hasSameNumber) {
-      setFormError("Диплом с таким номером уже существует.");
-      return;
+      const createdDiploma = await createDiploma({
+        studentId,
+        number,
+        speciality,
+        qualification,
+        issuedAt,
+      });
+
+      setLastCreatedDiploma(createdDiploma);
+      setRecentDiplomas((currentDiplomas) => [
+        createdDiploma,
+        ...currentDiplomas,
+      ]);
+      setForm(initialForm);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Не удалось создать диплом.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newDiploma: CreatedDiploma = {
-      id: Date.now(),
-      number,
-      studentId: selectedStudent.id,
-      owner: selectedStudent.fullName,
-      universityName: "МГУ им. М. В. Ломоносова",
-      speciality,
-      qualification,
-      issuedAt,
-      status: "valid",
-    };
-
-    setCreatedDiplomas((currentDiplomas) => [newDiploma, ...currentDiplomas]);
-    setLastCreatedDiploma(newDiploma);
-    setForm(initialForm);
-    setFormError("");
   };
 
   return (
@@ -122,15 +151,18 @@ export function CreateDiplomaPage() {
                   id="student"
                   className={styles.select}
                   value={form.studentId}
+                  disabled={isStudentsLoading}
                   onChange={(event) =>
                     updateFormField("studentId", event.target.value)
                   }
                 >
                   <option value="" disabled>
-                    Выберите студента
+                    {isStudentsLoading
+                      ? "Загрузка студентов..."
+                      : "Выберите студента"}
                   </option>
 
-                  {diplomaCreateStudentsMock.map((student) => (
+                  {students.map((student) => (
                     <option key={student.id} value={student.id}>
                       {student.fullName} · {student.group}
                     </option>
@@ -206,10 +238,18 @@ export function CreateDiplomaPage() {
                 />
               </div>
 
+              {studentsError && (
+                <p className={styles.errorText}>{studentsError}</p>
+              )}
+
               {formError && <p className={styles.errorText}>{formError}</p>}
 
-              <button className={styles.primaryButton} type="submit">
-                Создать диплом
+              <button
+                className={styles.primaryButton}
+                type="submit"
+                disabled={isSubmitting || isStudentsLoading}
+              >
+                {isSubmitting ? "Создание..." : "Создать диплом"}
               </button>
             </form>
           </div>
@@ -239,7 +279,7 @@ export function CreateDiplomaPage() {
                   <span
                     className={getStatusClassName(lastCreatedDiploma.status)}
                   >
-                    {createdDiplomaStatusLabels[lastCreatedDiploma.status]}
+                    {diplomaStatusLabels[lastCreatedDiploma.status]}
                   </span>
                 </div>
 
@@ -247,6 +287,13 @@ export function CreateDiplomaPage() {
                   <div className={styles.detailItem}>
                     <span>Вуз</span>
                     <strong>{lastCreatedDiploma.universityName}</strong>
+                  </div>
+
+                  <div className={styles.detailItem}>
+                    <span>Студент</span>
+                    <strong>
+                      {selectedStudent?.fullName ?? lastCreatedDiploma.owner}
+                    </strong>
                   </div>
 
                   <div className={styles.detailItem}>
@@ -277,22 +324,28 @@ export function CreateDiplomaPage() {
             <div className={styles.recentBlock}>
               <h3 className={styles.recentTitle}>Последние созданные</h3>
 
-              <div className={styles.recentList}>
-                {createdDiplomas.slice(0, 3).map((diploma) => (
-                  <div key={diploma.id} className={styles.recentItem}>
-                    <div>
-                      <span className={styles.recentNumber}>
-                        {diploma.number}
-                      </span>
-                      <p className={styles.recentOwner}>{diploma.owner}</p>
-                    </div>
+              {recentDiplomas.length > 0 ? (
+                <div className={styles.recentList}>
+                  {recentDiplomas.slice(0, 3).map((diploma) => (
+                    <div key={diploma.id} className={styles.recentItem}>
+                      <div>
+                        <span className={styles.recentNumber}>
+                          {diploma.number}
+                        </span>
+                        <p className={styles.recentOwner}>{diploma.owner}</p>
+                      </div>
 
-                    <span className={getStatusClassName(diploma.status)}>
-                      {createdDiplomaStatusLabels[diploma.status]}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                      <span className={getStatusClassName(diploma.status)}>
+                        {diplomaStatusLabels[diploma.status]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.emptyText}>
+                  После создания дипломы появятся в этом списке.
+                </p>
+              )}
             </div>
           </div>
         </div>

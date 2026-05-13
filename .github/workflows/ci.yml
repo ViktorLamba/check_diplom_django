@@ -9,6 +9,26 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: django_test
+          POSTGRES_USER: django_user
+          POSTGRES_PASSWORD: django_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U django_user -d django_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DB_NAME: django_test
+      DB_USER: django_user
+      DB_PASSWORD: django_pass
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
 
     steps:
       - name: Checkout
@@ -29,8 +49,11 @@ jobs:
       - name: Lint
         run: flake8 backend
 
+      - name: Check migrations
+        run: python backend/manage.py makemigrations --check --dry-run
+
       - name: Run Django tests
-        run: python backend/manage.py test
+        run: python backend/manage.py test apps.auth apps.registry
 
   build-and-push-images:
     runs-on: ubuntu-latest

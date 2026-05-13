@@ -1,34 +1,88 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  myDiplomasMock,
-  myDiplomaStatusLabels,
-  type MyDiploma,
-  type MyDiplomaStatus,
-} from "../model/myDiplomasMock";
+  getMyDiplomas,
+  type Diploma,
+  type DiplomaStatus,
+} from "@/pages/diplomas/model/diplomasApi";
 import styles from "./MyDiplomasPage.module.scss";
 
+const myDiplomaStatusLabels: Record<DiplomaStatus, string> = {
+  valid: "Подтверждён",
+  pending: "На проверке",
+  revoked: "Отозван",
+};
+
+const pageSize = 10;
+
 export function MyDiplomasPage() {
-  const [selectedDiplomaId, setSelectedDiplomaId] = useState(
-    myDiplomasMock[0]?.id ?? null,
+  const [diplomas, setDiplomas] = useState<Diploma[]>([]);
+  const [selectedDiplomaId, setSelectedDiplomaId] = useState<number | null>(
+    null,
   );
+  const [isLoading, setIsLoading] = useState(false);
+  const [listError, setListError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    const loadDiplomas = async () => {
+      try {
+        setIsLoading(true);
+        setListError("");
+
+        const response = await getMyDiplomas({
+          page,
+          page_size: pageSize,
+        });
+
+        setDiplomas(response.results);
+        setTotalCount(response.count);
+
+        if (response.results.length > 0) {
+          setSelectedDiplomaId((currentId) => {
+            const hasCurrentDiploma = response.results.some(
+              (diploma) => diploma.id === currentId,
+            );
+
+            return hasCurrentDiploma ? currentId : response.results[0].id;
+          });
+        } else {
+          setSelectedDiplomaId(null);
+        }
+      } catch (error) {
+        setDiplomas([]);
+        setTotalCount(0);
+        setSelectedDiplomaId(null);
+        setListError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить дипломы.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadDiplomas();
+  }, [page]);
 
   const selectedDiploma = useMemo(() => {
     return (
-      myDiplomasMock.find((diploma) => diploma.id === selectedDiplomaId) ??
-      myDiplomasMock[0] ??
+      diplomas.find((diploma) => diploma.id === selectedDiplomaId) ??
+      diplomas[0] ??
       null
     );
-  }, [selectedDiplomaId]);
+  }, [diplomas, selectedDiplomaId]);
 
-  const validCount = myDiplomasMock.filter(
+  const validCount = diplomas.filter(
     (diploma) => diploma.status === "valid",
   ).length;
 
-  const pendingCount = myDiplomasMock.filter(
+  const pendingCount = diplomas.filter(
     (diploma) => diploma.status === "pending",
   ).length;
 
-  const getStatusClassName = (status: MyDiplomaStatus) => {
+  const getStatusClassName = (status: DiplomaStatus) => {
     if (status === "valid") {
       return styles.statusValid;
     }
@@ -40,7 +94,7 @@ export function MyDiplomasPage() {
     return styles.statusRevoked;
   };
 
-  const handleSelectDiploma = (diploma: MyDiploma) => {
+  const handleSelectDiploma = (diploma: Diploma) => {
     setSelectedDiplomaId(diploma.id);
   };
 
@@ -57,14 +111,18 @@ export function MyDiplomasPage() {
             </div>
           </div>
 
-          {myDiplomasMock.length > 0 ? (
+          {listError && <p className={styles.emptyText}>{listError}</p>}
+
+          {isLoading ? (
+            <div className={styles.emptyState}>
+              <h3 className={styles.emptyTitle}>Загрузка дипломов...</h3>
+            </div>
+          ) : diplomas.length > 0 ? (
             <>
               <div className={styles.summaryGrid}>
                 <div className={styles.summaryItem}>
                   <span className={styles.summaryLabel}>Всего дипломов</span>
-                  <strong className={styles.summaryValue}>
-                    {myDiplomasMock.length}
-                  </strong>
+                  <strong className={styles.summaryValue}>{totalCount}</strong>
                 </div>
 
                 <div className={styles.summaryItem}>
@@ -82,7 +140,7 @@ export function MyDiplomasPage() {
 
               <div className={styles.layout}>
                 <div className={styles.list}>
-                  {myDiplomasMock.map((diploma) => (
+                  {diplomas.map((diploma) => (
                     <button
                       key={diploma.id}
                       type="button"
@@ -121,7 +179,7 @@ export function MyDiplomasPage() {
                           {selectedDiploma.number}
                         </h3>
                         <p className={styles.detailsSubtitle}>
-                          {selectedDiploma.verificationDetails}
+                          Диплом находится в системе проверки подлинности.
                         </p>
                       </div>
 
@@ -136,6 +194,11 @@ export function MyDiplomasPage() {
                       <div className={styles.detailItem}>
                         <span>Вуз</span>
                         <strong>{selectedDiploma.universityName}</strong>
+                      </div>
+
+                      <div className={styles.detailItem}>
+                        <span>Владелец</span>
+                        <strong>{selectedDiploma.owner}</strong>
                       </div>
 
                       <div className={styles.detailItem}>
@@ -160,14 +223,37 @@ export function MyDiplomasPage() {
                       <div className={styles.qrTextBlock}>
                         <h4 className={styles.qrTitle}>QR-код диплома</h4>
                         <p className={styles.qrText}>
-                          QR-код будет доступен после подключения API генерации
-                          и публичной страницы проверки.
+                          {selectedDiploma.qrCodeUrl
+                            ? "QR-код доступен для этого диплома."
+                            : "QR-код пока не был сформирован."}
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
+
+              {totalCount > pageSize && (
+                <div className={styles.layout}>
+                  <button
+                    className={styles.diplomaCard}
+                    type="button"
+                    disabled={page === 1}
+                    onClick={() => setPage((currentPage) => currentPage - 1)}
+                  >
+                    Назад
+                  </button>
+
+                  <button
+                    className={styles.diplomaCard}
+                    type="button"
+                    disabled={page * pageSize >= totalCount}
+                    onClick={() => setPage((currentPage) => currentPage + 1)}
+                  >
+                    Вперёд
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <div className={styles.emptyState}>

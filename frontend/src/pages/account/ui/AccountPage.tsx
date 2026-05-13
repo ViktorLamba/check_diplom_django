@@ -1,5 +1,5 @@
 import { useAuth } from "@/shared/auth/AuthContext";
-import type { UserRole } from "@/shared/auth/types";
+import type { AuthUser, UserRole } from "@/shared/auth/types";
 import styles from "./AccountPage.module.scss";
 
 const roleLabels: Record<UserRole, string> = {
@@ -8,12 +8,29 @@ const roleLabels: Record<UserRole, string> = {
   admin: "Администратор",
 };
 
+function getRoleDetails(user: AuthUser | null) {
+  if (!user) {
+    return "Не указано";
+  }
+
+  if (user.role === "university") {
+    return user.universityName ?? "Вуз не указан";
+  }
+
+  if (user.role === "student") {
+    return user.studentName ?? "Студент не указан";
+  }
+
+  return "Полный доступ к системе";
+}
+
 export function AccountPage() {
   const { user, isLoading } = useAuth();
 
   const username = user?.username ?? "Не указано";
   const email = user?.email ?? "Не указано";
   const role = user?.role ? roleLabels[user.role] : "Не указано";
+  const roleDetails = getRoleDetails(user);
 
   return (
     <section className={styles.page}>
@@ -40,6 +57,19 @@ export function AccountPage() {
               <span className={styles.label}>Роль</span>
               <span className={styles.value}>
                 {isLoading ? "Загрузка..." : role}
+              </span>
+            </div>
+
+            <div className={styles.infoRow}>
+              <span className={styles.label}>
+                {user?.role === "university"
+                  ? "Вуз"
+                  : user?.role === "student"
+                    ? "Студент"
+                    : "Доступ"}
+              </span>
+              <span className={styles.value}>
+                {isLoading ? "Загрузка..." : roleDetails}
               </span>
             </div>
           </div>
