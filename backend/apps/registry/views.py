@@ -12,7 +12,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
 
-from .models import Diploma, Student, University
+from .models import Diploma, DiplomaVerificationLog, Student, University
 
 User = get_user_model()
 
@@ -141,6 +141,64 @@ def _diploma_verification_response(diploma):
     }
 
 
+def _verification_log_payload(log):
+    diploma = log.diploma
+    return {
+        'id': log.id,
+        'createdAt': log.created_at.isoformat(),
+        'source': log.source,
+        'verified': log.verified,
+        'verificationStatus': log.verification_status,
+        'requestedSeries': log.requested_series,
+        'requestedNumber': log.requested_number,
+        'requestedIssuedAt': log.requested_issued_at.isoformat() if log.requested_issued_at else None,
+        'requestedPublicId': str(log.requested_public_id) if log.requested_public_id else None,
+        'requesterIp': log.requester_ip,
+        'userAgent': log.user_agent,
+        'diploma': _diploma_payload(diploma) if diploma is not None else None,
+        'universityId': log.university_id,
+        'universityName': log.university.name if log.university is not None else None,
+    }
+
+
+def _request_ip(request):
+    forwarded_for = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+    return forwarded_for or request.META.get('REMOTE_ADDR') or None
+
+
+def _verification_status_for_diploma(diploma):
+    if diploma is None:
+        return DiplomaVerificationLog.STATUS_NOT_FOUND
+    if diploma.status == Diploma.STATUS_VALID:
+        return DiplomaVerificationLog.STATUS_VERIFIED
+    return diploma.status
+
+
+def _create_verification_log(
+    request,
+    *,
+    source,
+    diploma=None,
+    requested_series='',
+    requested_number='',
+    requested_issued_at=None,
+    requested_public_id=None,
+):
+    return DiplomaVerificationLog.objects.create(
+        diploma=diploma,
+        university=diploma.university if diploma is not None else None,
+        source=source,
+        requested_series=requested_series,
+        requested_number=requested_number,
+        requested_issued_at=requested_issued_at,
+        requested_public_id=requested_public_id,
+        verification_status=_verification_status_for_diploma(diploma),
+        verified=diploma is not None and diploma.status == Diploma.STATUS_VALID,
+        requester_ip=_request_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
+    )
+
+
 def _paginated_response(queryset, request, payload_factory):
     page = _positive_int(request.GET.get('page'), 1)
     page_size = _positive_int(request.GET.get('page_size'), 10, max_value=100)
@@ -167,16 +225,14 @@ def universities_view(request):
         return error
 
     if request.method == 'GET':
-        universities = list(University.objects.select_related('user').order_by('name', 'id'))
+        universities = University.objects.select_related('user').order_by('name', 'id')
         search = (request.GET.get('search') or '').strip()
         if search:
-            search_lower = search.lower()
-            universities = [
-                university for university in universities
-                if search_lower in university.name.lower()
-                or search_lower in university.user.username.lower()
-                or search_lower in university.user.email.lower()
-            ]
+            universities = universities.filter(
+                Q(name__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__email__icontains=search)
+            )
 
         return _paginated_response(universities, request, _university_payload)
 
@@ -291,13 +347,11 @@ def students_view(request):
             students = students.filter(status=status)
 
         if search:
-            search_lower = search.lower()
-            students = [
-                student for student in students
-                if search_lower in student.full_name.lower()
-                or search_lower in student.email.lower()
-                or search_lower in student.group.lower()
-            ]
+            students = students.filter(
+                Q(full_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(group__icontains=search)
+            )
 
         return _paginated_response(students, request, _student_payload)
 
@@ -540,6 +594,13 @@ def diploma_verify_view(request):
         .first()
     )
     if diploma is None:
+        _create_verification_log(
+            request,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_series=series,
+            requested_number=number,
+            requested_issued_at=issued_at,
+        )
         return JsonResponse(
             {
                 'verified': False,
@@ -550,6 +611,14 @@ def diploma_verify_view(request):
             status=404,
         )
 
+    _create_verification_log(
+        request,
+        source=DiplomaVerificationLog.SOURCE_FORM,
+        diploma=diploma,
+        requested_series=series,
+        requested_number=number,
+        requested_issued_at=issued_at,
+    )
     return JsonResponse(_diploma_verification_response(diploma), status=200)
 
 
@@ -562,6 +631,11 @@ def public_diploma_view(request, public_id):
         .first()
     )
     if diploma is None:
+        _create_verification_log(
+            request,
+            source=DiplomaVerificationLog.SOURCE_PUBLIC,
+            requested_public_id=public_id,
+        )
         return JsonResponse(
             {
                 'verified': False,
@@ -572,7 +646,57 @@ def public_diploma_view(request, public_id):
             status=404,
         )
 
+    _create_verification_log(
+        request,
+        source=DiplomaVerificationLog.SOURCE_PUBLIC,
+        diploma=diploma,
+        requested_public_id=public_id,
+    )
     return JsonResponse(_diploma_verification_response(diploma), status=200)
+
+
+@require_http_methods(['GET'])
+def diploma_verification_logs_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    logs = (
+        DiplomaVerificationLog.objects
+        .select_related('diploma__student', 'diploma__university', 'university')
+        .order_by('-created_at', '-id')
+    )
+
+    university = getattr(request.user, 'university', None)
+    if request.user.is_staff or request.user.is_superuser:
+        pass
+    elif university is not None:
+        logs = logs.filter(university=university)
+    else:
+        return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
+
+    search = (request.GET.get('search') or '').strip()
+    if search:
+        logs = logs.filter(
+            Q(requested_series__icontains=search)
+            | Q(requested_number__icontains=search)
+            | Q(diploma__number__icontains=search)
+            | Q(diploma__student__full_name__icontains=search)
+            | Q(university__name__icontains=search)
+        )
+
+    status = (request.GET.get('status') or '').strip()
+    if status:
+        if status not in dict(DiplomaVerificationLog.STATUS_CHOICES):
+            return JsonResponse({'detail': 'Некорректный статус проверки.'}, status=400)
+        logs = logs.filter(verification_status=status)
+
+    source = (request.GET.get('source') or '').strip()
+    if source:
+        if source not in dict(DiplomaVerificationLog.SOURCE_CHOICES):
+            return JsonResponse({'detail': 'Некорректный источник проверки.'}, status=400)
+        logs = logs.filter(source=source)
+
+    return _paginated_response(logs, request, _verification_log_payload)
 
 
 @require_http_methods(['GET'])

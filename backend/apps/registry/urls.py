@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     diploma_verify_view,
+    diploma_verification_logs_view,
     diplomas_view,
     my_diplomas_view,
     public_diploma_view,
@@ -18,6 +19,7 @@ urlpatterns = [
     path('students/<int:student_id>/', student_detail_view, name='student_detail'),
     path('diplomas/', diplomas_view, name='diplomas'),
     path('diplomas/verify/', diploma_verify_view, name='diploma_verify'),
+    path('diplomas/verification-logs/', diploma_verification_logs_view, name='diploma_verification_logs'),
     path('diplomas/my/', my_diplomas_view, name='my_diplomas'),
     path('diplom/<uuid:public_id>/', public_diploma_view, name='public_diploma'),
 ]
