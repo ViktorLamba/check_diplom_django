@@ -193,6 +193,52 @@ def universities_view(request):
     return JsonResponse(_university_payload(university), status=201)
 
 
+@require_http_methods(['PUT', 'PATCH', 'DELETE'])
+def university_detail_view(request, university_id):
+    error = _require_admin(request)
+    if error is not None:
+        return error
+
+    university = University.objects.filter(id=university_id).select_related('user').first()
+    if university is None:
+        return JsonResponse({'detail': 'Вуз не найден.'}, status=404)
+
+    if request.method == 'DELETE':
+        user = university.user
+        student_user_ids = list(
+            university.students.exclude(user__isnull=True).values_list('user_id', flat=True)
+        )
+        university.delete()
+        if student_user_ids:
+            User.objects.filter(id__in=student_user_ids).delete()
+        if user is not None:
+            user.delete()
+        return HttpResponse(status=204)
+
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip()
+    username = (data.get('username') or '').strip()
+
+    if not name or not email or not username:
+        return JsonResponse({'detail': 'Поля name, email и username обязательны.'}, status=400)
+
+    try:
+        with transaction.atomic():
+            university.name = name
+            university.user.email = email
+            university.user.username = username
+            university.user.save(update_fields=['email', 'username'])
+            university.save(update_fields=['name'])
+    except IntegrityError:
+        return JsonResponse({'detail': 'Вуз или пользователь с такими данными уже существует.'}, status=400)
+
+    return JsonResponse(_university_payload(university), status=200)
+
+
 @require_http_methods(['GET', 'POST'])
 def students_view(request):
     university, error = _current_university(request)
@@ -285,7 +331,7 @@ def students_view(request):
     return JsonResponse(payload, status=201)
 
 
-@require_http_methods(['DELETE'])
+@require_http_methods(['PUT', 'PATCH', 'DELETE'])
 def student_detail_view(request, student_id):
     university, error = _current_university(request)
     if error is not None:
@@ -294,6 +340,52 @@ def student_detail_view(request, student_id):
     student = Student.objects.filter(id=student_id, university=university).select_related('user').first()
     if student is None:
         return JsonResponse({'detail': 'Студент не найден.'}, status=404)
+
+    if request.method in ('PUT', 'PATCH'):
+        data = _parse_json_body(request)
+        if data is None:
+            return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+        full_name = (data.get('fullName') or '').strip()
+        email = (data.get('email') or '').strip()
+        group = (data.get('group') or '').strip()
+        course = data.get('course')
+        status = (data.get('status') or '').strip()
+
+        if not full_name or not email or not group or course in (None, '') or not status:
+            return JsonResponse(
+                {'detail': 'Поля fullName, email, group, course и status обязательны.'},
+                status=400,
+            )
+
+        try:
+            course = int(course)
+        except (TypeError, ValueError):
+            return JsonResponse({'detail': 'Поле course должно быть числом.'}, status=400)
+
+        if course < 1 or course > 6:
+            return JsonResponse({'detail': 'Поле course должно быть от 1 до 6.'}, status=400)
+
+        if status not in dict(Student.STATUS_CHOICES):
+            return JsonResponse({'detail': 'Некорректный статус студента.'}, status=400)
+
+        try:
+            with transaction.atomic():
+                student.full_name = full_name
+                student.email = email
+                student.group = group
+                student.course = course
+                student.status = status
+                student.save(update_fields=['full_name', 'email', 'group', 'course', 'status'])
+
+                if student.user is not None:
+                    student.user.email = email
+                    student.user.save(update_fields=['email'])
+        except IntegrityError:
+            return JsonResponse({'detail': 'Студент с таким email уже существует в этом вузе.'}, status=400)
+
+        student.diplomas_count = student.diplomas.count()
+        return JsonResponse(_student_payload(student), status=200)
 
     user = student.user
     student.delete()
@@ -305,23 +397,30 @@ def student_detail_view(request, student_id):
 
 @require_http_methods(['GET', 'POST'])
 def diplomas_view(request):
-    university, error = _current_university(request)
-    if error is not None:
-        return error
-
     if request.method == 'GET':
+        if not request.user.is_authenticated:
+            return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
         diplomas = (
             Diploma.objects
             .select_related('student', 'university')
-            .filter(university=university)
             .order_by('-issued_at', '-id')
         )
+
+        university = getattr(request.user, 'university', None)
+        if request.user.is_staff or request.user.is_superuser:
+            pass
+        elif university is not None:
+            diplomas = diplomas.filter(university=university)
+        else:
+            return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
 
         search = (request.GET.get('search') or '').strip()
         if search:
             diplomas = diplomas.filter(
                 Q(number__icontains=search)
                 | Q(student__full_name__icontains=search)
+                | Q(university__name__icontains=search)
                 | Q(speciality__icontains=search)
                 | Q(qualification__icontains=search)
             )
@@ -333,6 +432,10 @@ def diplomas_view(request):
             diplomas = diplomas.filter(status=status)
 
         return _paginated_response(diplomas, request, _diploma_payload)
+
+    university, error = _current_university(request)
+    if error is not None:
+        return error
 
     data = _parse_json_body(request)
     if data is None:
