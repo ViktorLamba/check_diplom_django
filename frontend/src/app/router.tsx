@@ -14,6 +14,7 @@ import { StudentsPage } from "../pages/students/ui/StudentsPage";
 import { CreateDiplomaPage } from "../pages/diploma-create/ui/CreateDiplomaPage";
 import { MyDiplomasPage } from "../pages/my-diplomas/ui/MyDiplomasPage";
 import { ForbiddenPage } from "../pages/forbidden/ui/ForbiddenPage";
+import { PublicDiplomaPage } from "../pages/public-diploma/ui/PublicDiplomaPage";
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +33,15 @@ export const router = createBrowserRouter([
     path: "/forbidden",
     element: <ForbiddenPage />,
   },
+  {
+    path: "/verification",
+    element: <VerificationPage />,
+  },
+  {
+    path: "/diplom/:publicId",
+    element: <PublicDiplomaPage />,
+  },
+
   {
     path: "/home",
     element: (

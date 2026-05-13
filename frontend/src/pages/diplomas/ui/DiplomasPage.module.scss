@@ -56,16 +56,25 @@
 .headRow,
 .row {
   display: grid;
-  grid-template-columns: 180px minmax(220px, 1.2fr) minmax(180px, 1fr) 140px;
-  gap: 16px;
+  grid-template-columns:
+    minmax(90px, 0.75fr)
+    minmax(120px, 1fr)
+    minmax(120px, 1fr)
+    minmax(120px, 1fr)
+    84px
+    104px
+    176px;
+  min-width: 0;
+  gap: 8px;
   align-items: center;
 }
 
 .headRow {
   padding: 0 0 12px;
   color: rgb(160, 160, 180);
-  font-size: 0.9rem;
   border-bottom: 1px solid rgba(180, 120, 255, 0.12);
+  padding-bottom: 8px;
+  font-size: 0.76rem;
 }
 
 .body {
@@ -226,33 +235,16 @@
   gap: 6px;
 }
 
-.headRow,
-.row {
-  grid-template-columns:
-    minmax(120px, 0.8fr)
-    minmax(150px, 1fr)
-    minmax(150px, 1fr)
-    minmax(140px, 0.9fr)
-    96px
-    106px
-    74px;
-  min-width: 860px;
-  gap: 8px;
-}
-
-.headRow {
-  padding-bottom: 8px;
-  font-size: 0.76rem;
-}
-
 .row {
   padding: 8px 0;
 }
 
 .number,
 .cell {
-  font-size: 0.8rem;
-  line-height: 1.35;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusValid,
@@ -289,6 +281,25 @@
 .actions {
   display: flex;
   justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 82px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 100, 140, 0.22);
+  background: rgba(255, 80, 120, 0.08);
+  color: rgb(255, 150, 175);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .dangerButton {

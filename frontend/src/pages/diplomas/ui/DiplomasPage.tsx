@@ -68,6 +68,28 @@ export function DiplomasPage() {
     (diploma) => diploma.status === "revoked",
   ).length;
 
+  const getDiplomaPublicUrl = (diploma: Diploma) => {
+    const url = diploma.verificationUrl || `/diplom/${diploma.publicId}`;
+
+    if (!url || url.includes("undefined") || url.includes("null")) {
+      return null;
+    }
+
+    return url.startsWith("http") ? url : `${window.location.origin}${url}`;
+  };
+
+  const handleCopyUrl = async (diploma: Diploma) => {
+    const url = getDiplomaPublicUrl(diploma);
+
+    if (!url) {
+      setListError("Для этого диплома пока нет публичной ссылки.");
+      return;
+    }
+
+    await navigator.clipboard.writeText(url);
+    setListError("Ссылка на диплом скопирована.");
+  };
+
   return (
     <section className={styles.page}>
       <div className={styles.card}>
@@ -143,7 +165,7 @@ export function DiplomasPage() {
                 <span>Специальность</span>
                 <span>Дата выдачи</span>
                 <span>Статус</span>
-                <span>QR</span>
+                <span>Действия</span>
               </div>
 
               <div className={styles.body}>
@@ -169,8 +191,29 @@ export function DiplomasPage() {
                         {diplomaStatusLabels[diploma.status]}
                       </span>
                     </span>
-                    <span className={styles.cell}>
-                      {diploma.qrCodeUrl ? "Доступен" : "Нет"}
+                    <span className={styles.actions}>
+                      {getDiplomaPublicUrl(diploma) ? (
+                        <>
+                          <a
+                            className={styles.actionButton}
+                            href={getDiplomaPublicUrl(diploma) ?? undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Открыть
+                          </a>
+
+                          <button
+                            className={styles.actionButton}
+                            type="button"
+                            onClick={() => void handleCopyUrl(diploma)}
+                          >
+                            Копировать
+                          </button>
+                        </>
+                      ) : (
+                        <span className={styles.cell}>Нет ссылки</span>
+                      )}
                     </span>
                   </div>
                 ))}

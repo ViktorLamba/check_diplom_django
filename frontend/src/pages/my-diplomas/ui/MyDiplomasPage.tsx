@@ -4,6 +4,8 @@ import {
   type Diploma,
   type DiplomaStatus,
 } from "@/pages/diplomas/model/diplomasApi";
+import { QRCodeSVG } from "qrcode.react";
+
 import styles from "./MyDiplomasPage.module.scss";
 
 const myDiplomaStatusLabels: Record<DiplomaStatus, string> = {
@@ -97,6 +99,20 @@ export function MyDiplomasPage() {
   const handleSelectDiploma = (diploma: Diploma) => {
     setSelectedDiplomaId(diploma.id);
   };
+
+  const getDiplomaPublicUrl = (diploma: Diploma) => {
+    const url = diploma.verificationUrl || `/diplom/${diploma.publicId}`;
+
+    if (!url || url.includes("undefined") || url.includes("null")) {
+      return null;
+    }
+
+    return url.startsWith("http") ? url : `${window.location.origin}${url}`;
+  };
+
+  const selectedDiplomaPublicUrl = selectedDiploma
+    ? getDiplomaPublicUrl(selectedDiploma)
+    : null;
 
   return (
     <section className={styles.page}>
@@ -217,18 +233,28 @@ export function MyDiplomasPage() {
                       </div>
                     </div>
 
-                    <div className={styles.qrBlock}>
-                      <div className={styles.qrPlaceholder}>QR</div>
+                    {selectedDiplomaPublicUrl && (
+                      <div className={styles.qrBlock}>
+                        <div className={styles.qrPlaceholder}>
+                          <QRCodeSVG
+                            value={selectedDiplomaPublicUrl}
+                            size={82}
+                          />
+                        </div>
 
-                      <div className={styles.qrTextBlock}>
-                        <h4 className={styles.qrTitle}>QR-код диплома</h4>
-                        <p className={styles.qrText}>
-                          {selectedDiploma.qrCodeUrl
-                            ? "QR-код доступен для этого диплома."
-                            : "QR-код пока не был сформирован."}
-                        </p>
+                        <div className={styles.qrTextBlock}>
+                          <h4 className={styles.qrTitle}>
+                            Публичная ссылка на диплом
+                          </h4>
+                          <a
+                            className={styles.qrText}
+                            href={selectedDiplomaPublicUrl}
+                          >
+                            Открыть диплом
+                          </a>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>

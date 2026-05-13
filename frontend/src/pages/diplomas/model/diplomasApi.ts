@@ -14,7 +14,25 @@ export type Diploma = {
   qualification: string;
   issuedAt: string;
   status: DiplomaStatus;
-  qrCodeUrl: string | null;
+  qrCodeUrl?: string | null;
+  publicId?: string | null;
+  verificationUrl?: string | null;
+  verificationApiUrl?: string | null;
+};
+
+export type VerifyDiplomaPayload = {
+  series?: string;
+  number: string;
+  issuedAt: string;
+};
+
+export type VerifyDiplomaResponse = {
+  verified: boolean;
+  verificationStatus: "verified" | "revoked" | "not_found";
+  verificationMessage: string;
+  verificationUrl?: string;
+  verificationApiUrl?: string;
+  diploma: Diploma | null;
 };
 
 export type CreateDiplomaPayload = {
@@ -59,4 +77,15 @@ export function getMyDiplomas(params: { page?: number; page_size?: number }) {
   return request<PaginatedResponse<Diploma>>(
     `/api/diplomas/my/?${searchParams.toString()}`,
   );
+}
+
+export function verifyDiploma(payload: VerifyDiplomaPayload) {
+  return request<VerifyDiplomaResponse>("/api/diplomas/verify/", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function getPublicDiploma(publicId: string) {
+  return request<Diploma>(`/api/diplom/${publicId}/`);
 }
