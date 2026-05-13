@@ -22,9 +22,9 @@ export function RecentChecksCard() {
               <div className={styles.statusCell}>
                 <span
                   className={`${styles.statusDot} ${
-                    check.status === "valid"
+                    check.status === "Проверено"
                       ? styles.valid
-                      : check.status === "invalid"
+                      : check.status === "Отклонено"
                         ? styles.invalid
                         : styles.revoked
                   }`}

@@ -1,10 +1,5 @@
 import { request } from "../../../shared/api/http";
-
-export type AuthUser = {
-  id: number;
-  username: string;
-  email: string;
-};
+import type { AuthUser } from "@/shared/auth/types";
 
 export type LoginSuccessResponse = {
   detail: string;

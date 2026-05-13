@@ -8,28 +8,28 @@ export const dashboardStats = [
 export const recentChecks = [
   {
     id: 1,
-    status: "valid",
+    status: "Проверено",
     date: "2026-04-18",
     university: "МГУ им. Ломоносова",
     speciality: "Информатика",
   },
   {
     id: 2,
-    status: "invalid",
+    status: "Отклонено",
     date: "2026-04-17",
     university: "СПбГУ",
     speciality: "Прикладная математика",
   },
   {
     id: 3,
-    status: "revoked",
+    status: "В работе",
     date: "2026-04-16",
     university: "МФТИ",
     speciality: "Программная инженерия",
   },
   {
     id: 4,
-    status: "valid",
+    status: "Проверено",
     date: "2026-04-15",
     university: "КФУ",
     speciality: "Информационные системы",
