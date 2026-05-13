@@ -103,6 +103,85 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.json()['count'], 1)
         self.assertEqual(response.json()['results'][0]['name'], self.university.name)
 
+    def test_admin_can_update_university_account(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.put(
+            f'/api/universities/{self.university.id}/',
+            data=json.dumps(
+                {
+                    'name': 'МГУ',
+                    'email': 'office@msu.ru',
+                    'username': 'msu-office',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.university.refresh_from_db()
+        self.user.refresh_from_db()
+        self.assertEqual(self.university.name, 'МГУ')
+        self.assertEqual(self.user.email, 'office@msu.ru')
+        self.assertEqual(self.user.username, 'msu-office')
+        self.assertEqual(response.json()['name'], 'МГУ')
+
+    def test_admin_can_delete_university_account(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(admin)
+        university_id = self.university.id
+        user_id = self.user.id
+        student_user_id = student_user.id
+
+        response = self.client.delete(f'/api/universities/{university_id}/')
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(University.objects.filter(id=university_id).exists())
+        self.assertFalse(User.objects.filter(id=user_id).exists())
+        self.assertFalse(User.objects.filter(id=student_user_id).exists())
+
+    def test_university_user_cannot_update_or_delete_university_account(self):
+        update_response = self.client.put(
+            f'/api/universities/{self.university.id}/',
+            data=json.dumps(
+                {
+                    'name': 'МГУ',
+                    'email': 'office@msu.ru',
+                    'username': 'msu-office',
+                }
+            ),
+            content_type='application/json',
+        )
+        delete_response = self.client.delete(f'/api/universities/{self.university.id}/')
+
+        self.assertEqual(update_response.status_code, 403)
+        self.assertEqual(delete_response.status_code, 403)
+        self.assertTrue(University.objects.filter(id=self.university.id).exists())
+
     def test_students_are_filtered_by_current_user_university(self):
         own_student = Student.objects.create(
             university=self.university,
@@ -215,6 +294,73 @@ class RegistryApiTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Student.objects.filter(id=other_student.id).exists())
+
+    def test_university_can_update_student_inside_current_university(self):
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        student = Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+
+        response = self.client.put(
+            f'/api/students/{student.id}/',
+            data=json.dumps(
+                {
+                    'fullName': 'Иванов Иван Петрович',
+                    'email': 'ivanov.updated@student.msu.ru',
+                    'group': 'ИВТ-501',
+                    'course': 5,
+                    'status': Student.STATUS_INACTIVE,
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        student.refresh_from_db()
+        student_user.refresh_from_db()
+        self.assertEqual(student.full_name, 'Иванов Иван Петрович')
+        self.assertEqual(student.email, 'ivanov.updated@student.msu.ru')
+        self.assertEqual(student.group, 'ИВТ-501')
+        self.assertEqual(student.course, 5)
+        self.assertEqual(student.status, Student.STATUS_INACTIVE)
+        self.assertEqual(student_user.email, 'ivanov.updated@student.msu.ru')
+        self.assertEqual(response.json()['fullName'], 'Иванов Иван Петрович')
+
+    def test_update_student_only_inside_current_university(self):
+        other_student = Student.objects.create(
+            university=self.other_university,
+            full_name='Петров Петр Петрович',
+            email='petrov@student.spbu.ru',
+            group='ПМ-101',
+            course=1,
+        )
+
+        response = self.client.put(
+            f'/api/students/{other_student.id}/',
+            data=json.dumps(
+                {
+                    'fullName': 'Петров Петр Иванович',
+                    'email': 'petrov.updated@student.spbu.ru',
+                    'group': 'ПМ-201',
+                    'course': 2,
+                    'status': Student.STATUS_INACTIVE,
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+        other_student.refresh_from_db()
+        self.assertEqual(other_student.full_name, 'Петров Петр Петрович')
 
     def test_create_diploma_uses_current_user_university(self):
         student = Student.objects.create(
