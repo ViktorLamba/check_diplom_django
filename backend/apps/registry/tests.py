@@ -508,6 +508,119 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.json()['results'][0]['number'], 'DIP-2026-002')
         self.assertEqual(response.json()['results'][0]['universityName'], self.other_university.name)
 
+    def test_verify_diploma_by_number_and_issued_at(self):
+        student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+
+        response = self.client.post(
+            '/api/diplomas/verify/',
+            data=json.dumps(
+                {
+                    'number': 'DIP-2026-001',
+                    'issuedAt': '2026-05-10',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['verified'])
+        self.assertEqual(payload['verificationStatus'], 'verified')
+        self.assertEqual(payload['verificationMessage'], 'Диплом верифицирован.')
+        self.assertEqual(payload['diploma']['owner'], 'Иванов Иван Иванович')
+        self.assertEqual(payload['diploma']['universityName'], self.university.name)
+        self.assertEqual(payload['verificationUrl'], f"/diplom/{payload['diploma']['publicId']}")
+        self.assertEqual(payload['verificationApiUrl'], f"/api/diplom/{payload['diploma']['publicId']}/")
+
+    def test_verify_diploma_accepts_series_and_number(self):
+        student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='AB-123456',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+
+        response = self.client.post(
+            '/api/diplomas/verify/',
+            data=json.dumps(
+                {
+                    'series': 'AB',
+                    'number': '123456',
+                    'issuedAt': '2026-05-10',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['verified'])
+        self.assertEqual(response.json()['diploma']['number'], 'AB-123456')
+
+    def test_public_diploma_view_by_uuid(self):
+        student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        diploma = Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        self.client.logout()
+
+        response = self.client.get(f'/api/diplom/{diploma.public_id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['verified'])
+        self.assertEqual(response.json()['verificationUrl'], f'/diplom/{diploma.public_id}')
+        self.assertEqual(response.json()['diploma']['number'], 'DIP-2026-001')
+
+    def test_verify_diploma_returns_not_found(self):
+        response = self.client.post(
+            '/api/diplomas/verify/',
+            data=json.dumps(
+                {
+                    'number': 'DIP-404',
+                    'issuedAt': '2026-05-10',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()['verified'])
+        self.assertEqual(response.json()['verificationStatus'], 'not_found')
+        self.assertIsNone(response.json()['diploma'])
+
     def test_student_can_view_only_own_diplomas(self):
         student_user = User.objects.create_user(
             username='ivanov',
@@ -552,6 +665,10 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['count'], 1)
         self.assertEqual(response.json()['results'][0]['number'], 'DIP-2026-010')
+        self.assertEqual(
+            response.json()['results'][0]['verificationUrl'],
+            f"/diplom/{response.json()['results'][0]['publicId']}",
+        )
 
     def test_student_cannot_access_university_diplomas_module(self):
         student_user = User.objects.create_user(
