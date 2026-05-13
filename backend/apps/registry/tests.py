@@ -462,6 +462,52 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.json()['count'], 1)
         self.assertEqual(response.json()['results'][0]['number'], 'DIP-2026-001')
 
+    def test_admin_can_view_all_diplomas(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        own_student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        other_student = Student.objects.create(
+            university=self.other_university,
+            full_name='Петров Петр Петрович',
+            email='petrov@student.spbu.ru',
+            group='ПМ-101',
+            course=1,
+        )
+        Diploma.objects.create(
+            university=self.university,
+            student=own_student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        Diploma.objects.create(
+            university=self.other_university,
+            student=other_student,
+            number='DIP-2026-002',
+            speciality='Математика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/diplomas/?search=спбгу')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 1)
+        self.assertEqual(response.json()['results'][0]['number'], 'DIP-2026-002')
+        self.assertEqual(response.json()['results'][0]['universityName'], self.other_university.name)
+
     def test_student_can_view_only_own_diplomas(self):
         student_user = User.objects.create_user(
             username='ivanov',

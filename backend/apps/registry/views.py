@@ -397,23 +397,30 @@ def student_detail_view(request, student_id):
 
 @require_http_methods(['GET', 'POST'])
 def diplomas_view(request):
-    university, error = _current_university(request)
-    if error is not None:
-        return error
-
     if request.method == 'GET':
+        if not request.user.is_authenticated:
+            return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
         diplomas = (
             Diploma.objects
             .select_related('student', 'university')
-            .filter(university=university)
             .order_by('-issued_at', '-id')
         )
+
+        university = getattr(request.user, 'university', None)
+        if request.user.is_staff or request.user.is_superuser:
+            pass
+        elif university is not None:
+            diplomas = diplomas.filter(university=university)
+        else:
+            return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
 
         search = (request.GET.get('search') or '').strip()
         if search:
             diplomas = diplomas.filter(
                 Q(number__icontains=search)
                 | Q(student__full_name__icontains=search)
+                | Q(university__name__icontains=search)
                 | Q(speciality__icontains=search)
                 | Q(qualification__icontains=search)
             )
@@ -425,6 +432,10 @@ def diplomas_view(request):
             diplomas = diplomas.filter(status=status)
 
         return _paginated_response(diplomas, request, _diploma_payload)
+
+    university, error = _current_university(request)
+    if error is not None:
+        return error
 
     data = _parse_json_body(request)
     if data is None:
