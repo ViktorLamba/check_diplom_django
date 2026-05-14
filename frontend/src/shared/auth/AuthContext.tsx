@@ -13,6 +13,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   isLoading: boolean;
   refreshUser: () => Promise<void>;
+  clearUser: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,6 +35,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const clearUser = () => {
+    setUser(null);
+  };
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -51,6 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user,
       isLoading,
       refreshUser,
+      clearUser,
     }),
     [user, isLoading],
   );

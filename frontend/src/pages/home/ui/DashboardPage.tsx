@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/shared/auth/AuthContext";
 import {
+  publicDashboardData,
   dashboardDataByRole,
   type DashboardData,
 } from "../model/dashboardData";
@@ -9,7 +10,6 @@ import { getUniversityDashboardData } from "../model/dashboardApi";
 import { StatsGrid } from "./StatsGrid";
 import { RecentChecksCard } from "./RecentChecksCard";
 import { QuickActionsCard } from "./QuickActionsCard";
-import { AuthPromptCard } from "./AuthPromptCard";
 import styles from "./DashboardPage.module.scss";
 
 type DashboardPageProps = {
@@ -25,7 +25,15 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
   const [dashboardError, setDashboardError] = useState("");
 
   useEffect(() => {
-    if (!user || user.role === "student") {
+    if (!user) {
+      if (showAuthPrompt) {
+        setDashboardData(publicDashboardData);
+      }
+
+      return;
+    }
+
+    if (user.role === "student") {
       return;
     }
 
@@ -67,7 +75,7 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
     };
 
     void loadDashboard();
-  }, [user]);
+  }, [user, showAuthPrompt]);
 
   if (user?.role === "student") {
     return <Navigate to="/home/my-diplomas" replace />;
@@ -77,22 +85,28 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
     return null;
   }
 
+  const isPublicDashboard = showAuthPrompt && !user;
+
   return (
     <section className={styles.dashboard}>
-      {showAuthPrompt && <AuthPromptCard />}
-
       {dashboardError && <p>{dashboardError}</p>}
       {isLoading && <p>Загрузка данных...</p>}
 
       <StatsGrid stats={dashboardData.stats} />
 
-      <div className={styles.bottomSection}>
-        <RecentChecksCard
-          title={dashboardData.recentChecksTitle}
-          checks={dashboardData.recentChecks}
-        />
+      {isPublicDashboard && dashboardData.quickActions.length > 0 && (
         <QuickActionsCard actions={dashboardData.quickActions} />
-      </div>
+      )}
+
+      {!isPublicDashboard && dashboardData.recentChecks.length > 0 && (
+        <div className={styles.bottomSection}>
+          <RecentChecksCard
+            title={dashboardData.recentChecksTitle}
+            checks={dashboardData.recentChecks}
+          />
+          <QuickActionsCard actions={dashboardData.quickActions} />
+        </div>
+      )}
     </section>
   );
 }

@@ -34,6 +34,7 @@ import {
 import type { AuthUser, UserRole } from "@/shared/auth/types";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "@/pages/login/model/authApi";
+import { useAuth } from "@/shared/auth/AuthContext";
 import styles from "./AppSidebar.module.scss";
 
 type AppSidebarProps = {
@@ -109,12 +110,16 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { clearUser } = useAuth();
+
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/home");
     } catch (error) {
       console.error("Не удалось выйти из системы", error);
+    } finally {
+      clearUser();
+      window.location.replace("/home");
     }
   };
 

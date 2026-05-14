@@ -123,3 +123,28 @@ export const dashboardDataByRole: Record<
     ],
   },
 };
+
+export const publicDashboardData: DashboardData = {
+  stats: [
+    { id: "universities", label: "Всего вузов", value: "24" },
+    { id: "users", label: "Пользователей", value: "1,284" },
+    { id: "diplomas", label: "Всего дипломов", value: "8,912" },
+    { id: "checksToday", label: "Проверок сегодня", value: "1,200" },
+  ],
+  recentChecksTitle: "",
+  recentChecks: [],
+  quickActions: [
+    {
+      id: "verification",
+      label: "Проверить диплом",
+      to: "/verification",
+      icon: "П",
+    },
+    {
+      id: "login",
+      label: "Авторизоваться",
+      to: "/login",
+      icon: "А",
+    },
+  ],
+};
