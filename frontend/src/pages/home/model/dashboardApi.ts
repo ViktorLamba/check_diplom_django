@@ -12,7 +12,6 @@ const formatCount = (value: number) =>
 const diplomaStatusToCheckStatus: Record<DiplomaStatus, RecentCheck["status"]> =
   {
     valid: "Проверено",
-    pending: "В работе",
     revoked: "Отклонено",
   };
 

@@ -5,12 +5,11 @@ import {
   type DiplomaStatus,
 } from "@/pages/diplomas/model/diplomasApi";
 import { QRCodeSVG } from "qrcode.react";
-
+import { useNavigate } from "react-router-dom";
 import styles from "./MyDiplomasPage.module.scss";
 
 const myDiplomaStatusLabels: Record<DiplomaStatus, string> = {
   valid: "Подтверждён",
-  pending: "На проверке",
   revoked: "Отозван",
 };
 
@@ -80,8 +79,8 @@ export function MyDiplomasPage() {
     (diploma) => diploma.status === "valid",
   ).length;
 
-  const pendingCount = diplomas.filter(
-    (diploma) => diploma.status === "pending",
+  const revokedCount = diplomas.filter(
+    (diploma) => diploma.status === "revoked",
   ).length;
 
   const getStatusClassName = (status: DiplomaStatus) => {
@@ -89,15 +88,15 @@ export function MyDiplomasPage() {
       return styles.statusValid;
     }
 
-    if (status === "pending") {
-      return styles.statusPending;
-    }
-
     return styles.statusRevoked;
   };
 
   const handleSelectDiploma = (diploma: Diploma) => {
-    setSelectedDiplomaId(diploma.id);
+    const url = getDiplomaPublicUrl(diploma);
+
+    if (url) {
+      navigate(new URL(url).pathname);
+    }
   };
 
   const getDiplomaPublicUrl = (diploma: Diploma) => {
@@ -113,6 +112,8 @@ export function MyDiplomasPage() {
   const selectedDiplomaPublicUrl = selectedDiploma
     ? getDiplomaPublicUrl(selectedDiploma)
     : null;
+
+  const navigate = useNavigate();
 
   return (
     <section className={styles.page}>
@@ -147,9 +148,9 @@ export function MyDiplomasPage() {
                 </div>
 
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>На проверке</span>
+                  <span className={styles.summaryLabel}>Отозванных</span>
                   <strong className={styles.summaryValue}>
-                    {pendingCount}
+                    {revokedCount}
                   </strong>
                 </div>
               </div>

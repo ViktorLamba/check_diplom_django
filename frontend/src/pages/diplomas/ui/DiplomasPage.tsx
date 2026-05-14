@@ -8,7 +8,6 @@ import styles from "./DiplomasPage.module.scss";
 
 const diplomaStatusLabels: Record<DiplomaStatus, string> = {
   valid: "Подтверждён",
-  pending: "На проверке",
   revoked: "Отозван",
 };
 
@@ -60,10 +59,6 @@ export function DiplomasPage() {
     (diploma) => diploma.status === "valid",
   ).length;
 
-  const pendingCount = diplomas.filter(
-    (diploma) => diploma.status === "pending",
-  ).length;
-
   const revokedCount = diplomas.filter(
     (diploma) => diploma.status === "revoked",
   ).length;
@@ -113,11 +108,6 @@ export function DiplomasPage() {
             </div>
 
             <div className={styles.summaryItem}>
-              <span className={styles.summaryLabel}>На проверке</span>
-              <strong className={styles.summaryValue}>{pendingCount}</strong>
-            </div>
-
-            <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Отозванных</span>
               <strong className={styles.summaryValue}>{revokedCount}</strong>
             </div>
@@ -145,7 +135,6 @@ export function DiplomasPage() {
             >
               <option value="">Все статусы</option>
               <option value="valid">Подтверждённые</option>
-              <option value="pending">На проверке</option>
               <option value="revoked">Отозванные</option>
             </select>
           </div>
@@ -183,9 +172,7 @@ export function DiplomasPage() {
                         className={
                           diploma.status === "valid"
                             ? styles.statusValid
-                            : diploma.status === "pending"
-                              ? styles.statusPending
-                              : styles.statusRevoked
+                            : styles.statusRevoked
                         }
                       >
                         {diplomaStatusLabels[diploma.status]}
@@ -200,7 +187,7 @@ export function DiplomasPage() {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            Открыть
+                            QR
                           </a>
 
                           <button
