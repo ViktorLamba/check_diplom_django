@@ -1,8 +1,6 @@
 import {
   getDiplomas,
   getVerificationLogs,
-  type Diploma,
-  type DiplomaStatus,
   type VerificationLog,
   type VerificationStatus,
 } from "@/pages/diplomas/model/diplomasApi";
@@ -14,33 +12,22 @@ import { request } from "@/shared/api/http";
 const formatCount = (value: number) =>
   new Intl.NumberFormat("ru-RU").format(value);
 
-const diplomaStatusToCheckStatus: Record<DiplomaStatus, RecentCheck["status"]> =
-  {
-    valid: "Проверено",
-    revoked: "Отозван",
-  };
-
-function diplomaToRecentCheck(diploma: Diploma): RecentCheck {
-  return {
-    id: diploma.id,
-    status: diplomaStatusToCheckStatus[diploma.status],
-    date: diploma.issuedAt,
-    university: diploma.universityName,
-    speciality: diploma.speciality,
-  };
-}
-
 export async function getUniversityDashboardData(
   baseData: DashboardData,
 ): Promise<DashboardData> {
-  const [students, diplomas, validDiplomas, revokedDiplomas, recentDiplomas] =
-    await Promise.all([
-      getStudents({ page: 1, page_size: 1 }),
-      getDiplomas({ page: 1, page_size: 1 }),
-      getDiplomas({ status: "valid", page: 1, page_size: 1 }),
-      getDiplomas({ status: "revoked", page: 1, page_size: 1 }),
-      getDiplomas({ page: 1, page_size: 3 }),
-    ]);
+  const [
+    students,
+    diplomas,
+    validDiplomas,
+    revokedDiplomas,
+    recentVerificationLogs,
+  ] = await Promise.all([
+    getStudents({ page: 1, page_size: 1 }),
+    getDiplomas({ page: 1, page_size: 1 }),
+    getDiplomas({ status: "valid", page: 1, page_size: 1 }),
+    getDiplomas({ status: "revoked", page: 1, page_size: 1 }),
+    getVerificationLogs({ source: "form", page: 1, page_size: 5 }),
+  ]);
 
   return {
     ...baseData,
@@ -66,8 +53,10 @@ export async function getUniversityDashboardData(
         value: formatCount(revokedDiplomas.count),
       },
     ],
-    recentChecksTitle: "Последние дипломы моего вуза",
-    recentChecks: recentDiplomas.results.map(diplomaToRecentCheck),
+    recentChecksTitle: "Последние проверки моего вуза",
+    recentChecks: recentVerificationLogs.results.map(
+      verificationLogToRecentCheck,
+    ),
   };
 }
 
