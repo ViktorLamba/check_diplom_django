@@ -3,15 +3,22 @@ import random
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth import authenticate, get_user_model, login, logout, update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import TwoFactorCode
 
 User = get_user_model()
+
+PASSWORD_RESET_DETAIL = 'Если пользователь с таким email существует, письмо для восстановления пароля отправлено.'
 
 
 def _parse_json_body(request):
@@ -80,6 +87,101 @@ def register_view(request):
         is_staff=False,
     )
     return JsonResponse({'detail': 'Пользователь создан администратором.', 'user': _user_payload(user)}, status=201)
+
+
+@require_POST
+def password_reset_view(request):
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    email = (data.get('email') or '').strip()
+    user = User.objects.filter(email=email).first() if email else None
+
+    if user is not None:
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_url = f'{settings.FRONTEND_URL.rstrip("/")}/reset-password?uid={uid}&token={token}'
+
+        send_mail(
+            subject='Восстановление пароля',
+            message=(
+                f'Здравствуйте, {user.username}.\n\n'
+                'Для восстановления пароля перейдите по ссылке:\n'
+                f'{reset_url}\n\n'
+                'Если вы не запрашивали восстановление пароля, просто проигнорируйте это письмо.'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+    return JsonResponse({'detail': PASSWORD_RESET_DETAIL}, status=200)
+
+
+@require_POST
+def password_reset_confirm_view(request):
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    uid = data.get('uid') or ''
+    token = data.get('token') or ''
+    password = data.get('password') or ''
+    password_confirm = data.get('passwordConfirm') or ''
+
+    if password != password_confirm:
+        return JsonResponse({'detail': 'Пароли не совпадают.'}, status=400)
+
+    try:
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist, ValidationError, DjangoUnicodeDecodeError):
+        return JsonResponse({'detail': 'Некорректная ссылка восстановления пароля.'}, status=400)
+
+    if not default_token_generator.check_token(user, token):
+        return JsonResponse({'detail': 'Некорректная ссылка восстановления пароля.'}, status=400)
+
+    try:
+        validate_password(password, user=user)
+    except ValidationError as error:
+        return JsonResponse({'detail': error.messages}, status=400)
+
+    user.set_password(password)
+    user.save()
+
+    return JsonResponse({'detail': 'Пароль успешно изменён.'}, status=200)
+
+
+@require_POST
+def change_password_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    old_password = data.get('oldPassword') or ''
+    new_password = data.get('newPassword') or ''
+    new_password_confirm = data.get('newPasswordConfirm') or ''
+
+    if not request.user.check_password(old_password):
+        return JsonResponse({'detail': 'Старый пароль указан неверно.'}, status=400)
+
+    if new_password != new_password_confirm:
+        return JsonResponse({'detail': 'Пароли не совпадают.'}, status=400)
+
+    try:
+        validate_password(new_password, user=request.user)
+    except ValidationError as error:
+        return JsonResponse({'detail': error.messages}, status=400)
+
+    request.user.set_password(new_password)
+    request.user.save()
+    update_session_auth_hash(request, request.user)
+
+    return JsonResponse({'detail': 'Пароль успешно изменён.'}, status=200)
 
 
 @require_POST

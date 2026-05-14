@@ -1,0 +1,4 @@
+services:
+  db:
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT}:5432"

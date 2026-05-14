@@ -1,0 +1,157 @@
+.page {
+  width: 100%;
+}
+
+.card {
+  max-width: 920px;
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.02)
+    ),
+    rgba(16, 18, 36, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(180, 100, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.infoList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(180, 120, 255, 0.12);
+}
+
+.label {
+  color: rgb(160, 160, 180);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.value {
+  color: rgb(255, 255, 255);
+  font-size: 0.98rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.valueMuted {
+  color: rgb(200, 200, 220);
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.divider {
+  height: 1px;
+  margin: 24px 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(180, 120, 255, 0.24),
+    transparent
+  );
+}
+
+.passwordForm {
+  display: grid;
+  gap: 18px;
+}
+
+.formTitle {
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid rgba(160, 119, 255, 0.28);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  padding: 18px 22px;
+  font-size: 18px;
+  outline: none;
+}
+
+.input::placeholder {
+  color: rgba(235, 231, 255, 0.55);
+}
+
+.primaryButton {
+  width: fit-content;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ff3f86, #b647f2);
+  color: #ffffff;
+  padding: 16px 26px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.errorText {
+  margin: 0;
+  color: #ff9bb5;
+  font-size: 16px;
+}
+
+.successText {
+  margin: 0;
+  color: #7ff0b2;
+  font-size: 16px;
+}
+
+@media (max-width: 700px) {
+  .card {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .infoRow {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
+  }
+
+  .value,
+  .valueMuted {
+    text-align: left;
+  }
+}

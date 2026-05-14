@@ -1,36 +1,28 @@
-import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { me } from "../pages/login/model/authApi";
+import { useAuth } from "@/shared/auth/AuthContext";
+import type { UserRole } from "@/shared/auth/types";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
+  allowedRoles?: UserRole[];
 };
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await me();
-        setIsAuthenticated(true);
-      } catch {
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) {
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return <div>Проверка авторизации...</div>;
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/forbidden" replace />;
   }
 
   return <>{children}</>;

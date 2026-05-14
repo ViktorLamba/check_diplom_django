@@ -18,6 +18,10 @@ import {
   ChevronsUpDown,
   LogOut,
   CircleUserRound,
+  Users,
+  Building2,
+  GraduationCap,
+  UserPlus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,53 +31,102 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { AuthUser } from "@/pages/login/model/authApi";
-import { useNavigate } from "react-router-dom";
+import type { AuthUser, UserRole } from "@/shared/auth/types";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "@/pages/login/model/authApi";
+import { useAuth } from "@/shared/auth/AuthContext";
 import styles from "./AppSidebar.module.scss";
 
-export type SidebarSection =
-  | "dashboard"
-  | "verification"
-  | "history"
-  | "diplomas"
-  | "account";
-
 type AppSidebarProps = {
-  activeSection: SidebarSection;
-  onSectionChange: (section: SidebarSection) => void;
   user: AuthUser | null;
 };
 
 const items: Array<{
-  key: SidebarSection;
+  to: string;
   title: string;
   icon: typeof LayoutDashboard;
+  roles: UserRole[];
 }> = [
-  { key: "dashboard", title: "Главная страница", icon: LayoutDashboard },
-  { key: "verification", title: "Подтверждение диплома", icon: BadgeCheck },
-  { key: "history", title: "История проверки", icon: History },
-  { key: "diplomas", title: "Дипломы", icon: FileText },
+  {
+    to: "/home/dashboard",
+    title: "Главная",
+    icon: LayoutDashboard,
+    roles: ["admin", "university"],
+  },
+  {
+    to: "/home/universities",
+    title: "Вузы",
+    icon: Building2,
+    roles: ["admin"],
+  },
+  {
+    to: "/home/users",
+    title: "Пользователи",
+    icon: Users,
+    roles: ["admin"],
+  },
+  {
+    to: "/home/students",
+    title: "Студенты",
+    icon: GraduationCap,
+    roles: ["university"],
+  },
+  {
+    to: "/home/diplomas/create",
+    title: "Создать диплом",
+    icon: UserPlus,
+    roles: ["university"],
+  },
+  {
+    to: "/home/diplomas",
+    title: "Дипломы",
+    icon: FileText,
+    roles: ["admin", "university"],
+  },
+  {
+    to: "/home/my-diplomas",
+    title: "Мои дипломы",
+    icon: FileText,
+    roles: ["student"],
+  },
+  {
+    to: "/home/history",
+    title: "Логи проверок",
+    icon: History,
+    roles: ["admin", "university"],
+  },
+  {
+    to: "/home/verification",
+    title: "Проверка диплома",
+    icon: BadgeCheck,
+    roles: ["admin", "university"],
+  },
 ];
 
-export function AppSidebar({
-  activeSection,
-  onSectionChange,
-  user,
-}: AppSidebarProps) {
+export function AppSidebar({ user }: AppSidebarProps) {
   const username = user?.username ?? "Загрузка...";
   const email = user?.email ?? "email не указан";
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const { clearUser } = useAuth();
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/");
     } catch (error) {
       console.error("Не удалось выйти из системы", error);
+    } finally {
+      clearUser();
+      window.location.replace("/home");
     }
   };
+
+  const visibleItems = user
+    ? items.filter((item) => item.roles.includes(user.role))
+    : [];
+
   return (
     <Sidebar className={styles.sidebar}>
       <SidebarHeader className={styles.header}>
@@ -84,20 +137,22 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
-                const isActive = item.key === activeSection;
+              {visibleItems.map((item) => {
+                const isActive = location.pathname === item.to;
 
                 return (
-                  <SidebarMenuItem key={item.key}>
+                  <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton
-                      type="button"
-                      onClick={() => onSectionChange(item.key)}
+                      asChild
+                      isActive={isActive}
                       className={
                         isActive ? styles.menuButtonActive : styles.menuButton
                       }
                     >
-                      <item.icon className={styles.icon} />
-                      <span>{item.title}</span>
+                      <NavLink to={item.to}>
+                        <item.icon className={styles.icon} />
+                        <span>{item.title}</span>
+                      </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -145,7 +200,7 @@ export function AppSidebar({
 
             <DropdownMenuItem
               className={styles.accountMenuItem}
-              onClick={() => onSectionChange("account")}
+              onClick={() => navigate("/home/account")}
             >
               <CircleUserRound className={styles.dropdownIcon} />
               <span>Аккаунт</span>

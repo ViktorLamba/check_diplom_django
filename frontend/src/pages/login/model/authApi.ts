@@ -1,10 +1,5 @@
 import { request } from "../../../shared/api/http";
-
-export type AuthUser = {
-  id: number;
-  username: string;
-  email: string;
-};
+import type { AuthUser } from "@/shared/auth/types";
 
 export type LoginSuccessResponse = {
   detail: string;
@@ -22,6 +17,7 @@ export type LoginResponse = LoginSuccessResponse | Login2FAResponse;
 export type LoginPayload = {
   username: string;
   password: string;
+  rememberMe?: boolean;
 };
 
 export function login(payload: LoginPayload) {
@@ -44,6 +40,7 @@ export type LogoutResponse = {
 export type VerifyLoginPayload = {
   username: string;
   code: string;
+  rememberMe?: boolean;
 };
 
 export type VerifyLoginResponse = {
@@ -65,5 +62,47 @@ export type MeResponse = {
 export function me() {
   return request<MeResponse>("/api/auth/me/", {
     method: "GET",
+  });
+}
+
+export type PasswordResetPayload = {
+  email: string;
+};
+
+export function requestPasswordReset(payload: PasswordResetPayload) {
+  return request<{ detail: string }>("/api/auth/password-reset/", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export type PasswordResetConfirmPayload = {
+  uid: string;
+  token: string;
+  password: string;
+  passwordConfirm: string;
+};
+
+export function confirmPasswordReset(payload: PasswordResetConfirmPayload) {
+  return request<{ detail: string }>("/api/auth/password-reset/confirm/", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export type ChangePasswordPayload = {
+  oldPassword: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+};
+
+export type ChangePasswordResponse = {
+  detail: string;
+};
+
+export function changePassword(payload: ChangePasswordPayload) {
+  return request<ChangePasswordResponse>("/api/auth/change-password/", {
+    method: "POST",
+    body: payload,
   });
 }

@@ -1,0 +1,333 @@
+.page {
+  width: 100%;
+}
+
+.card {
+  padding: 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.02)
+    ),
+    rgba(16, 18, 36, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(180, 100, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1.22rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sectionSubtitle {
+  margin: 0;
+  color: rgb(160, 160, 180);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  overflow-x: auto;
+  gap: 6px;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 120, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.summaryLabel {
+  color: rgb(160, 160, 180);
+  font-size: 0.78rem;
+}
+
+.summaryValue {
+  color: rgb(255, 255, 255);
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 210px) minmax(
+      160px,
+      210px
+    );
+  gap: 8px;
+}
+
+.input,
+.select {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 120, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgb(255, 255, 255);
+  font-size: 0.84rem;
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.input::placeholder {
+  color: rgb(130, 130, 150);
+}
+
+.input:focus {
+  border-color: rgba(255, 80, 150, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 80, 150, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 160px;
+  padding-right: 46px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color-scheme: dark;
+  background:
+    linear-gradient(45deg, transparent 50%, rgb(235, 235, 255) 50%),
+    linear-gradient(135deg, rgb(235, 235, 255) 50%, transparent 50%),
+    linear-gradient(
+      90deg,
+      transparent calc(100% - 46px),
+      rgba(255, 255, 255, 0.06) calc(100% - 46px)
+    ),
+    rgba(255, 255, 255, 0.03);
+  background-position:
+    calc(100% - 24px) 50%,
+    calc(100% - 16px) 50%,
+    0 0,
+    0 0;
+  background-size:
+    8px 8px,
+    8px 8px,
+    100% 100%,
+    100% 100%;
+  background-repeat: no-repeat;
+}
+
+.select:focus {
+  border-color: rgba(255, 80, 150, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 80, 150, 0.12);
+  background:
+    linear-gradient(45deg, transparent 50%, rgb(235, 235, 255) 50%),
+    linear-gradient(135deg, rgb(235, 235, 255) 50%, transparent 50%),
+    linear-gradient(
+      90deg,
+      transparent calc(100% - 46px),
+      rgba(255, 255, 255, 0.06) calc(100% - 46px)
+    ),
+    rgba(255, 255, 255, 0.04);
+  background-position:
+    calc(100% - 24px) 50%,
+    calc(100% - 16px) 50%,
+    0 0,
+    0 0;
+  background-size:
+    8px 8px,
+    8px 8px,
+    100% 100%,
+    100% 100%;
+  background-repeat: no-repeat;
+}
+
+.select option {
+  background: rgb(18, 20, 40);
+  color: rgb(255, 255, 255);
+}
+
+.select option:checked {
+  background: rgb(80, 55, 130);
+  color: rgb(255, 255, 255);
+}
+
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, 0.8fr)
+    130px
+    minmax(120px, 0.8fr)
+    minmax(170px, 1fr)
+    minmax(170px, 1fr)
+    minmax(130px, 0.8fr)
+    minmax(120px, 0.8fr);
+  min-width: 980px;
+  gap: 8px;
+}
+
+.headRow {
+  padding: 0 0 12px;
+  color: rgb(160, 160, 180);
+  font-size: 0.76rem;
+  padding-bottom: 8px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.number {
+  color: rgb(255, 255, 255);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.row {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(180, 120, 255, 0.08);
+  transition: background 180ms ease;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.status {
+  color: rgb(255, 255, 255);
+  font-weight: 500;
+}
+
+.cell {
+  color: rgb(214, 214, 228);
+  line-height: 1.5;
+}
+
+.statusValid,
+.statusInvalid,
+.statusRevoked {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.statusValid {
+  border: 1px solid rgba(88, 220, 160, 0.24);
+  background: rgba(88, 220, 160, 0.1);
+  color: rgb(145, 245, 195);
+}
+
+.statusInvalid {
+  border: 1px solid rgba(255, 190, 90, 0.24);
+  background: rgba(255, 190, 90, 0.1);
+  color: rgb(255, 215, 145);
+}
+
+.statusRevoked {
+  border: 1px solid rgba(255, 100, 140, 0.24);
+  background: rgba(255, 80, 120, 0.1);
+  color: rgb(255, 165, 185);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  justify-content: center;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(180, 120, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.emptyTitle {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.emptyText {
+  max-width: 560px;
+  margin: 0;
+  color: rgb(180, 180, 198);
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .headRow,
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .card {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .headRow,
+  .row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

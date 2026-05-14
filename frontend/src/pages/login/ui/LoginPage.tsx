@@ -11,13 +11,27 @@ import {
 import { LoginForm } from "./LoginForm";
 import { VerifyCodeForm } from "./VerifyCodeForm";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/shared/auth/AuthContext";
+import type { UserRole } from "@/shared/auth/types";
+
+function getHomePathByRole(role: UserRole) {
+  switch (role) {
+    case "student":
+      return "/home/my-diplomas";
+    case "admin":
+    case "university":
+      return "/home/dashboard";
+  }
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
 
   const [serverError, setServerError] = useState("");
   const [authStep, setAuthStep] = useState<"login" | "verify">("login");
   const [pendingUsername, setPendingUsername] = useState("");
+  const [pendingRememberMe, setPendingRememberMe] = useState(false);
 
   const {
     register,
@@ -52,6 +66,7 @@ export function LoginPage() {
       const response = await login({
         username: data.username,
         password: data.password,
+        rememberMe: data.rememberMe,
       });
 
       console.log("Login response:", response);
@@ -60,13 +75,15 @@ export function LoginPage() {
         setServerError("");
         setAuthStep("verify");
         setPendingUsername(response.username);
+        setPendingRememberMe(Boolean(data.rememberMe));
         resetVerifyForm();
         return;
       }
 
       if ("user" in response) {
         console.log("Успешный вход:", response.user);
-        navigate("/home");
+        await refreshUser();
+        navigate(getHomePathByRole(response.user.role));
         return;
       }
     } catch (error) {
@@ -85,10 +102,12 @@ export function LoginPage() {
       const response = await verifyLogin({
         username: pendingUsername,
         code: data.code,
+        rememberMe: pendingRememberMe,
       });
 
       console.log("Вход подтвержден:", response.user);
-      navigate("/home");
+      await refreshUser();
+      navigate(getHomePathByRole(response.user.role));
     } catch (error) {
       if (error instanceof Error) {
         setServerError(error.message);

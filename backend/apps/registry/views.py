@@ -9,10 +9,11 @@ from django.core.paginator import EmptyPage, Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
 
-from .models import Diploma, Student, University
+from .models import Diploma, DiplomaVerificationLog, Student, University
 
 User = get_user_model()
 
@@ -57,6 +58,19 @@ def _require_admin(request):
     return None
 
 
+def _require_admin_or_university(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    if request.user.is_staff or request.user.is_superuser:
+        return None
+
+    if getattr(request.user, 'university', None) is not None:
+        return None
+
+    return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
+
+
 def _positive_int(value, default, max_value=None):
     try:
         parsed = int(value)
@@ -95,9 +109,43 @@ def _university_payload(university):
     }
 
 
+def _user_role(user):
+    university = getattr(user, 'university', None)
+    student = getattr(user, 'student', None)
+
+    if user.is_staff or user.is_superuser:
+        return 'admin'
+    if university is not None:
+        return 'university'
+    if student is not None:
+        return 'student'
+    return 'user'
+
+
+def _user_payload(user):
+    university = getattr(user, 'university', None)
+    student = getattr(user, 'student', None)
+    student_university = student.university if student is not None else None
+    related_university = university or student_university
+
+    return {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'role': _user_role(user),
+        'universityId': related_university.id if related_university is not None else None,
+        'universityName': related_university.name if related_university is not None else None,
+        'studentId': student.id if student is not None else None,
+        'studentName': student.full_name if student is not None else None,
+        'isActive': user.is_active,
+        'createdAt': user.date_joined.date().isoformat(),
+    }
+
+
 def _diploma_payload(diploma):
     return {
         'id': diploma.id,
+        'publicId': str(diploma.public_id),
         'number': diploma.number,
         'studentId': diploma.student_id,
         'owner': diploma.student.full_name,
@@ -108,7 +156,94 @@ def _diploma_payload(diploma):
         'issuedAt': diploma.issued_at.isoformat(),
         'status': diploma.status,
         'qrCodeUrl': diploma.qr_code_url,
+        'verificationUrl': f'/diplom/{diploma.public_id}',
+        'verificationApiUrl': f'/api/diplom/{diploma.public_id}/',
     }
+
+
+def _diploma_verification_payload(diploma):
+    payload = _diploma_payload(diploma)
+    payload['verificationStatus'] = 'verified' if diploma.status == Diploma.STATUS_VALID else diploma.status
+    payload['verificationMessage'] = (
+        'Диплом верифицирован.'
+        if diploma.status == Diploma.STATUS_VALID
+        else 'Диплом найден, но не является действующим.'
+    )
+    return payload
+
+
+def _diploma_verification_response(diploma):
+    verified = diploma.status == Diploma.STATUS_VALID
+    return {
+        'verified': verified,
+        'verificationStatus': 'verified' if verified else diploma.status,
+        'verificationMessage': (
+            'Диплом верифицирован.'
+            if verified
+            else 'Диплом найден, но не является действующим.'
+        ),
+        'verificationUrl': f'/diplom/{diploma.public_id}',
+        'verificationApiUrl': f'/api/diplom/{diploma.public_id}/',
+        'diploma': _diploma_verification_payload(diploma),
+    }
+
+
+def _verification_log_payload(log):
+    diploma = log.diploma
+    return {
+        'id': log.id,
+        'createdAt': log.created_at.isoformat(),
+        'source': log.source,
+        'verified': log.verified,
+        'verificationStatus': log.verification_status,
+        'requestedSeries': log.requested_series,
+        'requestedNumber': log.requested_number,
+        'requestedIssuedAt': log.requested_issued_at.isoformat() if log.requested_issued_at else None,
+        'requestedPublicId': str(log.requested_public_id) if log.requested_public_id else None,
+        'requesterIp': log.requester_ip,
+        'userAgent': log.user_agent,
+        'diploma': _diploma_payload(diploma) if diploma is not None else None,
+        'universityId': log.university_id,
+        'universityName': log.university.name if log.university is not None else None,
+    }
+
+
+def _request_ip(request):
+    forwarded_for = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+    return forwarded_for or request.META.get('REMOTE_ADDR') or None
+
+
+def _verification_status_for_diploma(diploma):
+    if diploma is None:
+        return DiplomaVerificationLog.STATUS_NOT_FOUND
+    if diploma.status == Diploma.STATUS_VALID:
+        return DiplomaVerificationLog.STATUS_VERIFIED
+    return diploma.status
+
+
+def _create_verification_log(
+    request,
+    *,
+    source,
+    diploma=None,
+    requested_series='',
+    requested_number='',
+    requested_issued_at=None,
+    requested_public_id=None,
+):
+    return DiplomaVerificationLog.objects.create(
+        diploma=diploma,
+        university=diploma.university if diploma is not None else None,
+        source=source,
+        requested_series=requested_series,
+        requested_number=requested_number,
+        requested_issued_at=requested_issued_at,
+        requested_public_id=requested_public_id,
+        verification_status=_verification_status_for_diploma(diploma),
+        verified=diploma is not None and diploma.status == Diploma.STATUS_VALID,
+        requester_ip=_request_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
+    )
 
 
 def _paginated_response(queryset, request, payload_factory):
@@ -130,6 +265,85 @@ def _paginated_response(queryset, request, payload_factory):
     )
 
 
+@require_http_methods(['GET'])
+def public_stats_view(request):
+    return JsonResponse(
+        {
+            'universitiesCount': University.objects.count(),
+            'usersCount': User.objects.count(),
+            'diplomasCount': Diploma.objects.count(),
+            'checksTodayCount': DiplomaVerificationLog.objects.filter(created_at__date=timezone.localdate()).count(),
+        },
+        status=200,
+    )
+
+
+@require_http_methods(['GET'])
+def users_view(request):
+    error = _require_admin_or_university(request)
+    if error is not None:
+        return error
+
+    users = (
+        User.objects
+        .select_related('university', 'student__university')
+        .order_by('-date_joined', '-id')
+    )
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        university = request.user.university
+        users = users.filter(Q(id=request.user.id) | Q(student__university=university))
+
+    role = (request.GET.get('role') or '').strip()
+    if role:
+        if role == 'admin':
+            users = users.filter(Q(is_staff=True) | Q(is_superuser=True))
+        elif role == 'university':
+            users = users.filter(university__isnull=False, is_staff=False, is_superuser=False)
+        elif role == 'student':
+            users = users.filter(student__isnull=False, is_staff=False, is_superuser=False)
+        elif role == 'user':
+            users = users.filter(university__isnull=True, student__isnull=True, is_staff=False, is_superuser=False)
+        else:
+            return JsonResponse({'detail': 'Некорректная роль пользователя.'}, status=400)
+
+    search = (request.GET.get('search') or '').strip()
+    if search:
+        users = users.filter(
+            Q(username__icontains=search)
+            | Q(email__icontains=search)
+            | Q(university__name__icontains=search)
+            | Q(student__full_name__icontains=search)
+            | Q(student__university__name__icontains=search)
+        )
+
+    return _paginated_response(users, request, _user_payload)
+
+
+@require_http_methods(['DELETE'])
+def user_detail_view(request, user_id):
+    error = _require_admin(request)
+    if error is not None:
+        return error
+
+    user = User.objects.filter(id=user_id).first()
+    if user is None:
+        return JsonResponse({'detail': 'Пользователь не найден.'}, status=404)
+
+    university = getattr(user, 'university', None)
+    student_user_ids = []
+    if university is not None:
+        student_user_ids = list(
+            university.students.exclude(user__isnull=True).values_list('user_id', flat=True)
+        )
+
+    user.delete()
+    if student_user_ids:
+        User.objects.filter(id__in=student_user_ids).delete()
+
+    return HttpResponse(status=204)
+
+
 @require_http_methods(['GET', 'POST'])
 def universities_view(request):
     error = _require_admin(request)
@@ -137,16 +351,14 @@ def universities_view(request):
         return error
 
     if request.method == 'GET':
-        universities = list(University.objects.select_related('user').order_by('name', 'id'))
+        universities = University.objects.select_related('user').order_by('name', 'id')
         search = (request.GET.get('search') or '').strip()
         if search:
-            search_lower = search.lower()
-            universities = [
-                university for university in universities
-                if search_lower in university.name.lower()
-                or search_lower in university.user.username.lower()
-                or search_lower in university.user.email.lower()
-            ]
+            universities = universities.filter(
+                Q(name__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__email__icontains=search)
+            )
 
         return _paginated_response(universities, request, _university_payload)
 
@@ -193,6 +405,52 @@ def universities_view(request):
     return JsonResponse(_university_payload(university), status=201)
 
 
+@require_http_methods(['PUT', 'PATCH', 'DELETE'])
+def university_detail_view(request, university_id):
+    error = _require_admin(request)
+    if error is not None:
+        return error
+
+    university = University.objects.filter(id=university_id).select_related('user').first()
+    if university is None:
+        return JsonResponse({'detail': 'Вуз не найден.'}, status=404)
+
+    if request.method == 'DELETE':
+        user = university.user
+        student_user_ids = list(
+            university.students.exclude(user__isnull=True).values_list('user_id', flat=True)
+        )
+        university.delete()
+        if student_user_ids:
+            User.objects.filter(id__in=student_user_ids).delete()
+        if user is not None:
+            user.delete()
+        return HttpResponse(status=204)
+
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip()
+    username = (data.get('username') or '').strip()
+
+    if not name or not email or not username:
+        return JsonResponse({'detail': 'Поля name, email и username обязательны.'}, status=400)
+
+    try:
+        with transaction.atomic():
+            university.name = name
+            university.user.email = email
+            university.user.username = username
+            university.user.save(update_fields=['email', 'username'])
+            university.save(update_fields=['name'])
+    except IntegrityError:
+        return JsonResponse({'detail': 'Вуз или пользователь с такими данными уже существует.'}, status=400)
+
+    return JsonResponse(_university_payload(university), status=200)
+
+
 @require_http_methods(['GET', 'POST'])
 def students_view(request):
     university, error = _current_university(request)
@@ -215,13 +473,11 @@ def students_view(request):
             students = students.filter(status=status)
 
         if search:
-            search_lower = search.lower()
-            students = [
-                student for student in students
-                if search_lower in student.full_name.lower()
-                or search_lower in student.email.lower()
-                or search_lower in student.group.lower()
-            ]
+            students = students.filter(
+                Q(full_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(group__icontains=search)
+            )
 
         return _paginated_response(students, request, _student_payload)
 
@@ -285,7 +541,7 @@ def students_view(request):
     return JsonResponse(payload, status=201)
 
 
-@require_http_methods(['DELETE'])
+@require_http_methods(['PUT', 'PATCH', 'DELETE'])
 def student_detail_view(request, student_id):
     university, error = _current_university(request)
     if error is not None:
@@ -294,6 +550,52 @@ def student_detail_view(request, student_id):
     student = Student.objects.filter(id=student_id, university=university).select_related('user').first()
     if student is None:
         return JsonResponse({'detail': 'Студент не найден.'}, status=404)
+
+    if request.method in ('PUT', 'PATCH'):
+        data = _parse_json_body(request)
+        if data is None:
+            return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+        full_name = (data.get('fullName') or '').strip()
+        email = (data.get('email') or '').strip()
+        group = (data.get('group') or '').strip()
+        course = data.get('course')
+        status = (data.get('status') or '').strip()
+
+        if not full_name or not email or not group or course in (None, '') or not status:
+            return JsonResponse(
+                {'detail': 'Поля fullName, email, group, course и status обязательны.'},
+                status=400,
+            )
+
+        try:
+            course = int(course)
+        except (TypeError, ValueError):
+            return JsonResponse({'detail': 'Поле course должно быть числом.'}, status=400)
+
+        if course < 1 or course > 6:
+            return JsonResponse({'detail': 'Поле course должно быть от 1 до 6.'}, status=400)
+
+        if status not in dict(Student.STATUS_CHOICES):
+            return JsonResponse({'detail': 'Некорректный статус студента.'}, status=400)
+
+        try:
+            with transaction.atomic():
+                student.full_name = full_name
+                student.email = email
+                student.group = group
+                student.course = course
+                student.status = status
+                student.save(update_fields=['full_name', 'email', 'group', 'course', 'status'])
+
+                if student.user is not None:
+                    student.user.email = email
+                    student.user.save(update_fields=['email'])
+        except IntegrityError:
+            return JsonResponse({'detail': 'Студент с таким email уже существует в этом вузе.'}, status=400)
+
+        student.diplomas_count = student.diplomas.count()
+        return JsonResponse(_student_payload(student), status=200)
 
     user = student.user
     student.delete()
@@ -305,23 +607,30 @@ def student_detail_view(request, student_id):
 
 @require_http_methods(['GET', 'POST'])
 def diplomas_view(request):
-    university, error = _current_university(request)
-    if error is not None:
-        return error
-
     if request.method == 'GET':
+        if not request.user.is_authenticated:
+            return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
         diplomas = (
             Diploma.objects
             .select_related('student', 'university')
-            .filter(university=university)
             .order_by('-issued_at', '-id')
         )
+
+        university = getattr(request.user, 'university', None)
+        if request.user.is_staff or request.user.is_superuser:
+            pass
+        elif university is not None:
+            diplomas = diplomas.filter(university=university)
+        else:
+            return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
 
         search = (request.GET.get('search') or '').strip()
         if search:
             diplomas = diplomas.filter(
                 Q(number__icontains=search)
                 | Q(student__full_name__icontains=search)
+                | Q(university__name__icontains=search)
                 | Q(speciality__icontains=search)
                 | Q(qualification__icontains=search)
             )
@@ -333,6 +642,10 @@ def diplomas_view(request):
             diplomas = diplomas.filter(status=status)
 
         return _paginated_response(diplomas, request, _diploma_payload)
+
+    university, error = _current_university(request)
+    if error is not None:
+        return error
 
     data = _parse_json_body(request)
     if data is None:
@@ -373,6 +686,143 @@ def diplomas_view(request):
 
     diploma = Diploma.objects.select_related('student', 'university').get(id=diploma.id)
     return JsonResponse(_diploma_payload(diploma), status=201)
+
+
+@require_http_methods(['POST'])
+def diploma_verify_view(request):
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    series = (data.get('series') or '').strip()
+    number = (data.get('number') or '').strip()
+    issued_at_raw = (data.get('issuedAt') or '').strip()
+
+    if not number or not issued_at_raw:
+        return JsonResponse({'detail': 'Поля number и issuedAt обязательны.'}, status=400)
+
+    issued_at = parse_date(issued_at_raw)
+    if not isinstance(issued_at, date):
+        return JsonResponse({'detail': 'Поле issuedAt должно быть датой в формате YYYY-MM-DD.'}, status=400)
+
+    possible_numbers = [number]
+    if series:
+        possible_numbers.extend([
+            f'{series}{number}',
+            f'{series} {number}',
+            f'{series}-{number}',
+        ])
+
+    diploma = (
+        Diploma.objects
+        .select_related('student', 'university')
+        .filter(number__in=possible_numbers, issued_at=issued_at)
+        .first()
+    )
+    if diploma is None:
+        _create_verification_log(
+            request,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_series=series,
+            requested_number=number,
+            requested_issued_at=issued_at,
+        )
+        return JsonResponse(
+            {
+                'verified': False,
+                'verificationStatus': 'not_found',
+                'verificationMessage': 'Диплом не найден.',
+                'diploma': None,
+            },
+            status=404,
+        )
+
+    _create_verification_log(
+        request,
+        source=DiplomaVerificationLog.SOURCE_FORM,
+        diploma=diploma,
+        requested_series=series,
+        requested_number=number,
+        requested_issued_at=issued_at,
+    )
+    return JsonResponse(_diploma_verification_response(diploma), status=200)
+
+
+@require_http_methods(['GET'])
+def public_diploma_view(request, public_id):
+    diploma = (
+        Diploma.objects
+        .select_related('student', 'university')
+        .filter(public_id=public_id)
+        .first()
+    )
+    if diploma is None:
+        _create_verification_log(
+            request,
+            source=DiplomaVerificationLog.SOURCE_PUBLIC,
+            requested_public_id=public_id,
+        )
+        return JsonResponse(
+            {
+                'verified': False,
+                'verificationStatus': 'not_found',
+                'verificationMessage': 'Диплом не найден.',
+                'diploma': None,
+            },
+            status=404,
+        )
+
+    _create_verification_log(
+        request,
+        source=DiplomaVerificationLog.SOURCE_PUBLIC,
+        diploma=diploma,
+        requested_public_id=public_id,
+    )
+    return JsonResponse(_diploma_verification_response(diploma), status=200)
+
+
+@require_http_methods(['GET'])
+def diploma_verification_logs_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    logs = (
+        DiplomaVerificationLog.objects
+        .select_related('diploma__student', 'diploma__university', 'university')
+        .order_by('-created_at', '-id')
+    )
+
+    university = getattr(request.user, 'university', None)
+    if request.user.is_staff or request.user.is_superuser:
+        pass
+    elif university is not None:
+        logs = logs.filter(university=university)
+    else:
+        return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
+
+    search = (request.GET.get('search') or '').strip()
+    if search:
+        logs = logs.filter(
+            Q(requested_series__icontains=search)
+            | Q(requested_number__icontains=search)
+            | Q(diploma__number__icontains=search)
+            | Q(diploma__student__full_name__icontains=search)
+            | Q(university__name__icontains=search)
+        )
+
+    status = (request.GET.get('status') or '').strip()
+    if status:
+        if status not in dict(DiplomaVerificationLog.STATUS_CHOICES):
+            return JsonResponse({'detail': 'Некорректный статус проверки.'}, status=400)
+        logs = logs.filter(verification_status=status)
+
+    source = (request.GET.get('source') or '').strip()
+    if source:
+        if source not in dict(DiplomaVerificationLog.SOURCE_CHOICES):
+            return JsonResponse({'detail': 'Некорректный источник проверки.'}, status=400)
+        logs = logs.filter(source=source)
+
+    return _paginated_response(logs, request, _verification_log_payload)
 
 
 @require_http_methods(['GET'])

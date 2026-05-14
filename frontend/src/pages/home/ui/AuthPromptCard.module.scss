@@ -1,0 +1,74 @@
+.card {
+  border-radius: 22px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background:
+    linear-gradient(135deg, rgba(255, 60, 100, 0.08), rgba(180, 80, 255, 0.08)),
+    rgba(16, 18, 36, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(180, 100, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding: 22px 24px;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.textBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  color: rgb(255, 255, 255);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  color: rgb(160, 160, 180);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 760px;
+}
+
+.button {
+  flex-shrink: 0;
+  padding: 14px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(180, 120, 255, 0.22);
+  background: linear-gradient(135deg, rgb(255, 60, 100), rgb(180, 80, 255));
+  color: rgb(255, 255, 255);
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 18px rgba(255, 80, 150, 0.22),
+    0 0 28px rgba(180, 80, 255, 0.18);
+}
+
+@media (max-width: 900px) {
+  .content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .button {
+    width: 100%;
+  }
+}
