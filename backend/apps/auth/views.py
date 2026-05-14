@@ -3,12 +3,12 @@ import random
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth import authenticate, get_user_model, login, logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.http import JsonResponse
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -149,6 +149,37 @@ def password_reset_confirm_view(request):
 
     user.set_password(password)
     user.save()
+
+    return JsonResponse({'detail': 'Пароль успешно изменён.'}, status=200)
+
+
+@require_POST
+def change_password_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    data = _parse_json_body(request)
+    if data is None:
+        return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
+
+    old_password = data.get('oldPassword') or ''
+    new_password = data.get('newPassword') or ''
+    new_password_confirm = data.get('newPasswordConfirm') or ''
+
+    if not request.user.check_password(old_password):
+        return JsonResponse({'detail': 'Старый пароль указан неверно.'}, status=400)
+
+    if new_password != new_password_confirm:
+        return JsonResponse({'detail': 'Пароли не совпадают.'}, status=400)
+
+    try:
+        validate_password(new_password, user=request.user)
+    except ValidationError as error:
+        return JsonResponse({'detail': error.messages}, status=400)
+
+    request.user.set_password(new_password)
+    request.user.save()
+    update_session_auth_hash(request, request.user)
 
     return JsonResponse({'detail': 'Пароль успешно изменён.'}, status=200)
 

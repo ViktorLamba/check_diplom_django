@@ -20,6 +20,7 @@ class AuthApiTests(TestCase):
         self.register_url = '/api/auth/register/'
         self.login_url = '/api/auth/login/'
         self.login_verify_url = '/api/auth/login/verify/'
+        self.change_password_url = '/api/auth/change-password/'
         self.password_reset_url = '/api/auth/password-reset/'
         self.password_reset_confirm_url = '/api/auth/password-reset/confirm/'
         self.logout_url = '/api/auth/logout/'
@@ -234,6 +235,124 @@ class AuthApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_change_password_requires_auth(self):
+        response = self.client.post(
+            self.change_password_url,
+            data=json.dumps(
+                {
+                    'oldPassword': 'StrongPass123',
+                    'newPassword': 'NewStrongPass123',
+                    'newPasswordConfirm': 'NewStrongPass123',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_change_password_changes_password_and_keeps_session(self):
+        user = User.objects.create_user(
+            username='student',
+            email='student@example.com',
+            password='StrongPass123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            self.change_password_url,
+            data=json.dumps(
+                {
+                    'oldPassword': 'StrongPass123',
+                    'newPassword': 'NewStrongPass123',
+                    'newPasswordConfirm': 'NewStrongPass123',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['detail'], 'Пароль успешно изменён.')
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('NewStrongPass123'))
+
+        me_response = self.client.get(self.me_url)
+        self.assertEqual(me_response.status_code, 200)
+        self.assertEqual(me_response.json()['user']['username'], 'student')
+
+    def test_change_password_rejects_wrong_old_password(self):
+        user = User.objects.create_user(
+            username='student',
+            email='student@example.com',
+            password='StrongPass123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            self.change_password_url,
+            data=json.dumps(
+                {
+                    'oldPassword': 'WrongPass123',
+                    'newPassword': 'NewStrongPass123',
+                    'newPasswordConfirm': 'NewStrongPass123',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['detail'], 'Старый пароль указан неверно.')
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('StrongPass123'))
+
+    def test_change_password_rejects_password_mismatch(self):
+        user = User.objects.create_user(
+            username='student',
+            email='student@example.com',
+            password='StrongPass123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            self.change_password_url,
+            data=json.dumps(
+                {
+                    'oldPassword': 'StrongPass123',
+                    'newPassword': 'NewStrongPass123',
+                    'newPasswordConfirm': 'NewStrongPass456',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['detail'], 'Пароли не совпадают.')
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('StrongPass123'))
+
+    def test_change_password_rejects_weak_password(self):
+        user = User.objects.create_user(
+            username='student',
+            email='student@example.com',
+            password='StrongPass123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            self.change_password_url,
+            data=json.dumps(
+                {
+                    'oldPassword': 'StrongPass123',
+                    'newPassword': '123',
+                    'newPasswordConfirm': '123',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('StrongPass123'))
 
     def test_university_login_requires_2fa(self):
         User.objects.create_user(
