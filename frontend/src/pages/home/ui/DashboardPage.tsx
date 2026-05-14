@@ -6,7 +6,10 @@ import {
   dashboardDataByRole,
   type DashboardData,
 } from "../model/dashboardData";
-import { getUniversityDashboardData } from "../model/dashboardApi";
+import {
+  getAdminDashboardData,
+  getUniversityDashboardData,
+} from "../model/dashboardApi";
 import { StatsGrid } from "./StatsGrid";
 import { RecentChecksCard } from "./RecentChecksCard";
 import { QuickActionsCard } from "./QuickActionsCard";
@@ -43,7 +46,34 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
         : dashboardDataByRole.university;
 
     if (user.role === "admin") {
-      setDashboardData(baseData);
+      const loadAdminDashboard = async () => {
+        try {
+          setIsLoading(true);
+          setDashboardError("");
+
+          const realDashboardData = await getAdminDashboardData(baseData);
+          setDashboardData(realDashboardData);
+        } catch (error) {
+          setDashboardData({
+            ...baseData,
+            stats: baseData.stats.map((stat) => ({
+              ...stat,
+              value: "0",
+            })),
+            recentChecks: [],
+          });
+
+          setDashboardError(
+            error instanceof Error
+              ? error.message
+              : "Не удалось загрузить данные главной.",
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      void loadAdminDashboard();
       return;
     }
 
@@ -95,7 +125,7 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
       <StatsGrid stats={dashboardData.stats} />
 
       {isPublicDashboard && dashboardData.quickActions.length > 0 && (
-        <QuickActionsCard actions={dashboardData.quickActions} />
+        <QuickActionsCard actions={dashboardData.quickActions} layout="grid" />
       )}
 
       {!isPublicDashboard && dashboardData.recentChecks.length > 0 && (
@@ -104,7 +134,10 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
             title={dashboardData.recentChecksTitle}
             checks={dashboardData.recentChecks}
           />
-          <QuickActionsCard actions={dashboardData.quickActions} />
+          <QuickActionsCard
+            actions={dashboardData.quickActions}
+            layout="stack"
+          />
         </div>
       )}
     </section>

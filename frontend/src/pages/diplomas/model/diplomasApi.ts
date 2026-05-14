@@ -51,6 +51,7 @@ export type VerificationLogDiploma = {
   number: string;
   owner: string;
   universityName: string;
+  speciality?: string;
   verificationUrl: string;
 };
 
