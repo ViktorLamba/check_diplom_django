@@ -10,6 +10,9 @@ import styles from "./PublicDiplomaPage.module.scss";
 export function PublicDiplomaPage() {
   const { publicId = "" } = useParams();
   const [diploma, setDiploma] = useState<Diploma | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<
+    "verified" | "revoked" | "not_found" | null
+  >(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -23,13 +26,19 @@ export function PublicDiplomaPage() {
       try {
         setIsLoading(true);
         setError("");
-        setDiploma(await getPublicDiploma(publicId));
+
+        const response = await getPublicDiploma(publicId);
+
+        setDiploma(response.diploma);
+        setVerificationStatus(response.verificationStatus);
       } catch (error) {
         setError(
           error instanceof Error
             ? error.message
             : "Не удалось загрузить диплом.",
         );
+        setDiploma(null);
+        setVerificationStatus(null);
       } finally {
         setIsLoading(false);
       }
@@ -43,7 +52,7 @@ export function PublicDiplomaPage() {
   if (error || !diploma)
     return <main className={styles.page}>{error || "Диплом не найден."}</main>;
 
-  const isValid = diploma.status === "valid";
+  const isValid = verificationStatus === "verified";
 
   return (
     <main className={styles.page}>

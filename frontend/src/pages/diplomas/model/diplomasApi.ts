@@ -115,7 +115,7 @@ export function verifyDiploma(payload: VerifyDiplomaPayload) {
 }
 
 export function getPublicDiploma(publicId: string) {
-  return request<Diploma>(`/api/diplom/${publicId}/`);
+  return request<VerifyDiplomaResponse>(`/api/diplom/${publicId}/`);
 }
 
 export function getVerificationLogs(params: {
