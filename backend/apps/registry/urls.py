@@ -6,6 +6,7 @@ from .views import (
     diplomas_view,
     my_diplomas_view,
     public_diploma_view,
+    public_stats_view,
     student_detail_view,
     students_view,
     universities_view,
@@ -13,6 +14,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path('public/stats/', public_stats_view, name='public_stats'),
     path('universities/', universities_view, name='universities'),
     path('universities/<int:university_id>/', university_detail_view, name='university_detail'),
     path('students/', students_view, name='students'),
