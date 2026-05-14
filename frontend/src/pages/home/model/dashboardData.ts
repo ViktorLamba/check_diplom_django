@@ -8,7 +8,7 @@ export type DashboardStat = {
 
 export type RecentCheck = {
   id: number;
-  status: "Проверено" | "Отклонено" | "В работе";
+  status: "Проверено" | "Не найден" | "Отозван";
   date: string;
   university: string;
   speciality: string;
@@ -34,35 +34,13 @@ export const dashboardDataByRole: Record<
 > = {
   admin: {
     stats: [
-      { id: "universities", label: "Всего вузов", value: "24" },
-      { id: "users", label: "Пользователей", value: "1,284" },
-      { id: "diplomas", label: "Всего дипломов", value: "8,912" },
-      { id: "checksToday", label: "Проверок сегодня", value: "1,200" },
+      { id: "universities", label: "Всего вузов", value: "0" },
+      { id: "users", label: "Пользователей", value: "—" },
+      { id: "diplomas", label: "Всего дипломов", value: "0" },
+      { id: "checksToday", label: "Проверок", value: "0" },
     ],
     recentChecksTitle: "Последние проверки по системе",
-    recentChecks: [
-      {
-        id: 1,
-        status: "Проверено",
-        date: "2026-04-18",
-        university: "МГУ им. Ломоносова",
-        speciality: "Информатика",
-      },
-      {
-        id: 2,
-        status: "Отклонено",
-        date: "2026-04-17",
-        university: "СПбГУ",
-        speciality: "Прикладная математика",
-      },
-      {
-        id: 3,
-        status: "В работе",
-        date: "2026-04-16",
-        university: "МФТИ",
-        speciality: "Программная инженерия",
-      },
-    ],
+    recentChecks: [],
     quickActions: [
       {
         id: "universities",
@@ -83,29 +61,8 @@ export const dashboardDataByRole: Record<
       { id: "revokedDiplomas", label: "Отозванных дипломов", value: "0" },
     ],
     recentChecksTitle: "Последние дипломы моего вуза",
-    recentChecks: [
-      {
-        id: 1,
-        status: "Проверено",
-        date: "2026-04-18",
-        university: "Ваш вуз",
-        speciality: "Информатика",
-      },
-      {
-        id: 2,
-        status: "В работе",
-        date: "2026-04-17",
-        university: "Ваш вуз",
-        speciality: "Экономика",
-      },
-      {
-        id: 3,
-        status: "Отклонено",
-        date: "2026-04-16",
-        university: "Ваш вуз",
-        speciality: "Юриспруденция",
-      },
-    ],
+    recentChecks: [],
+
     quickActions: [
       {
         id: "students",
@@ -122,4 +79,29 @@ export const dashboardDataByRole: Record<
       { id: "diplomas", label: "Все дипломы", to: "/home/diplomas", icon: "Р" },
     ],
   },
+};
+
+export const publicDashboardData: DashboardData = {
+  stats: [
+    { id: "universities", label: "Всего вузов", value: "24" },
+    { id: "users", label: "Пользователей", value: "1,284" },
+    { id: "diplomas", label: "Всего дипломов", value: "8,912" },
+    { id: "checksToday", label: "Проверок сегодня", value: "1,200" },
+  ],
+  recentChecksTitle: "",
+  recentChecks: [],
+  quickActions: [
+    {
+      id: "verification",
+      label: "Проверить диплом",
+      to: "/verification",
+      icon: "П",
+    },
+    {
+      id: "login",
+      label: "Авторизоваться",
+      to: "/login",
+      icon: "А",
+    },
+  ],
 };

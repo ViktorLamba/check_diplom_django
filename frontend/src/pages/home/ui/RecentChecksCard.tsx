@@ -29,7 +29,7 @@ export function RecentChecksCard({ title, checks }: RecentChecksCardProps) {
                   className={`${styles.statusDot} ${
                     check.status === "Проверено"
                       ? styles.valid
-                      : check.status === "Отклонено"
+                      : check.status === "Не найден"
                         ? styles.invalid
                         : styles.revoked
                   }`}

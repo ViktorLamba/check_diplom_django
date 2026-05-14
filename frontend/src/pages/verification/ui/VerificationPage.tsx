@@ -37,9 +37,10 @@ export function VerificationPage() {
       }
 
       setMessage(response.verificationMessage || "Диплом не найден.");
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Не удалось проверить диплом.",
+    } catch {
+      setError("");
+      setMessage(
+        "Диплом не найден. Проверьте введенные данные и повторите попытку.",
       );
     } finally {
       setIsSubmitting(false);

@@ -4,9 +4,13 @@ import styles from "./QuickActionsCard.module.scss";
 
 type QuickActionsCardProps = {
   actions: QuickAction[];
+  layout?: "grid" | "stack";
 };
 
-export function QuickActionsCard({ actions }: QuickActionsCardProps) {
+export function QuickActionsCard({
+  actions,
+  layout = "stack",
+}: QuickActionsCardProps) {
   const navigate = useNavigate();
 
   return (
@@ -18,7 +22,9 @@ export function QuickActionsCard({ actions }: QuickActionsCardProps) {
         </p>
       </div>
 
-      <div className={styles.actions}>
+      <div
+        className={layout === "grid" ? styles.actionsGrid : styles.actionsStack}
+      >
         {actions.map((action) => (
           <button
             key={action.id}

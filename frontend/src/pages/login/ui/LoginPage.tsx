@@ -31,6 +31,7 @@ export function LoginPage() {
   const [serverError, setServerError] = useState("");
   const [authStep, setAuthStep] = useState<"login" | "verify">("login");
   const [pendingUsername, setPendingUsername] = useState("");
+  const [pendingRememberMe, setPendingRememberMe] = useState(false);
 
   const {
     register,
@@ -65,6 +66,7 @@ export function LoginPage() {
       const response = await login({
         username: data.username,
         password: data.password,
+        rememberMe: data.rememberMe,
       });
 
       console.log("Login response:", response);
@@ -73,6 +75,7 @@ export function LoginPage() {
         setServerError("");
         setAuthStep("verify");
         setPendingUsername(response.username);
+        setPendingRememberMe(Boolean(data.rememberMe));
         resetVerifyForm();
         return;
       }
@@ -99,6 +102,7 @@ export function LoginPage() {
       const response = await verifyLogin({
         username: pendingUsername,
         code: data.code,
+        rememberMe: pendingRememberMe,
       });
 
       console.log("Вход подтвержден:", response.user);

@@ -1,53 +1,82 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
-  initialUsers,
-  type ManagedUser,
-  type ManagedUserRole,
-} from "../model/usersMock";
+  deleteUser,
+  getUsers,
+  type ApiUser,
+  type UserRole,
+} from "../model/usersApi";
+import { createUniversity } from "../model/universitiesApi";
+import { createStudent } from "@/pages/students/model/studentsApi";
 import styles from "./AdminUsersPage.module.scss";
+
+type ManagedUserRole = Extract<UserRole, "university" | "student">;
 
 const roleLabels: Record<ManagedUserRole, string> = {
   university: "Представитель вуза",
   student: "Студент",
 };
 
+const getUserRoleLabel = (role: UserRole) => {
+  if (role === "university" || role === "student") {
+    return roleLabels[role];
+  }
+
+  return "—";
+};
+
+const getUserDisplayName = (user: ApiUser) =>
+  user.studentName ?? user.universityName ?? user.username;
+
 export function AdminUsersPage() {
-  const [users, setUsers] = useState<ManagedUser[]>(initialUsers);
+  const [users, setUsers] = useState<ApiUser[]>([]);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<ManagedUserRole | "">("");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formError, setFormError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [form, setForm] = useState({
     fullName: "",
     username: "",
     email: "",
     role: "university" as ManagedUserRole,
     universityName: "",
+    group: "",
+    course: 1,
   });
 
-  const filteredUsers = useMemo(() => {
-    const normalaizedSearch = search.trim().toLowerCase();
+  const loadUsers = async () => {
+    try {
+      setIsLoading(true);
+      setFormError("");
 
-    return users.filter((user) => {
-      const matchesRole = roleFilter ? user.role === roleFilter : true;
+      const response = await getUsers({
+        search,
+        role: roleFilter,
+        page: 1,
+        page_size: 100,
+      });
 
-      const matchesSearch = normalaizedSearch
-        ? [
-            user.fullName,
-            user.username,
-            user.email,
-            user.universityName,
-            roleLabels[user.role],
-          ]
+      setUsers(
+        response.results.filter(
+          (user) => user.role === "university" || user.role === "student",
+        ),
+      );
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось загрузить пользователей.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            .join(" ")
-            .toLowerCase()
-            .includes(normalaizedSearch)
-        : true;
-
-      return matchesRole && matchesSearch;
-    });
-  }, [search, roleFilter, users]);
+  useEffect(() => {
+    void loadUsers();
+  }, [search, roleFilter]);
 
   const universityUsersCount = users.filter(
     (user) => user.role === "university",
@@ -57,69 +86,95 @@ export function AdminUsersPage() {
     (user) => user.role === "student",
   ).length;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const fullName = form.fullName.trim();
     const username = form.username.trim();
     const email = form.email.trim();
     const universityName = form.universityName.trim();
+    const group = form.group.trim();
 
-    if (!fullName || !username || !email || !universityName) {
-      setFormError("Заполните ФИО, username, email и вуз.");
+    if (!username || !email) {
+      setFormError("Заполните username и email.");
       return;
     }
 
-    const isUsernameTaken = users.some((user) => user.username === username);
-    const isEmailTaken = users.some((user) => user.email === email);
+    try {
+      setIsSaving(true);
+      setFormError("");
 
-    if (isUsernameTaken) {
-      setFormError("Пользователь с таким username уже есть.");
-      return;
+      if (form.role === "university") {
+        if (!universityName) {
+          setFormError("Заполните название вуза.");
+          return;
+        }
+
+        await createUniversity({
+          name: universityName,
+          username,
+          email,
+        });
+      }
+
+      if (form.role === "student") {
+        if (!fullName || !group || !form.course) {
+          setFormError("Заполните ФИО, группу и курс студента.");
+          return;
+        }
+
+        await createStudent({
+          fullName,
+          username,
+          email,
+          group,
+          course: Number(form.course),
+        });
+      }
+
+      setForm({
+        fullName: "",
+        username: "",
+        email: "",
+        role: "university",
+        universityName: "",
+        group: "",
+        course: 1,
+      });
+
+      setIsFormOpen(false);
+      await loadUsers();
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось сохранить пользователя.",
+      );
+    } finally {
+      setIsSaving(false);
     }
-
-    if (isEmailTaken) {
-      setFormError("Пользователь с таким email уже есть.");
-      return;
-    }
-
-    setUsers((currentUsers) => [
-      {
-        id: Date.now(),
-        fullName,
-        username,
-        email,
-        role: form.role,
-        universityName,
-        status: "active",
-        createdAt: new Date().toISOString().slice(0, 10),
-      },
-      ...currentUsers,
-    ]);
-
-    setForm({
-      fullName: "",
-      username: "",
-      email: "",
-      role: "university",
-      universityName: "",
-    });
-    setFormError("");
-    setIsFormOpen(false);
   };
 
-  const handleDelete = (user: ManagedUser) => {
+  const handleDelete = async (user: ApiUser) => {
     const shouldDelete = window.confirm(
-      `Удалить пользователя "${user.fullName}"?`,
+      `Удалить пользователя "${getUserDisplayName(user)}"?`,
     );
 
     if (!shouldDelete) {
       return;
     }
 
-    setUsers((currentUsers) =>
-      currentUsers.filter((item) => item.id !== user.id),
-    );
+    try {
+      setFormError("");
+      await deleteUser(user.id);
+      await loadUsers();
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось удалить пользователя.",
+      );
+    }
   };
 
   return (
@@ -263,10 +318,57 @@ export function AdminUsersPage() {
               />
             </div>
 
+            {form.role === "student" && (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="group">
+                    Группа
+                  </label>
+                  <input
+                    id="group"
+                    className={styles.input}
+                    type="text"
+                    value={form.group}
+                    placeholder="ИВТ-401"
+                    onChange={(event) =>
+                      setForm((currentForm) => ({
+                        ...currentForm,
+                        group: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="course">
+                    Курс
+                  </label>
+                  <input
+                    id="course"
+                    className={styles.input}
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={form.course}
+                    onChange={(event) =>
+                      setForm((currentForm) => ({
+                        ...currentForm,
+                        course: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              </>
+            )}
+
             {formError && <p className={styles.formError}>{formError}</p>}
 
-            <button className={styles.primaryButton} type="submit">
-              Сохранить пользователя
+            <button
+              className={styles.primaryButton}
+              type="submit"
+              disabled={isSaving}
+            >
+              {isSaving ? "Сохранение..." : "Сохранить пользователя"}
             </button>
           </form>
         )}
@@ -293,7 +395,9 @@ export function AdminUsersPage() {
           </select>
         </div>
 
-        {filteredUsers.length > 0 ? (
+        {isLoading && <p>Загрузка пользователей...</p>}
+
+        {!isLoading && users.length > 0 ? (
           <div className={styles.table}>
             <div className={styles.headRow}>
               <span>Пользователь</span>
@@ -306,23 +410,29 @@ export function AdminUsersPage() {
             </div>
 
             <div className={styles.body}>
-              {filteredUsers.map((user) => (
+              {users.map((user) => (
                 <div className={styles.row} key={user.id}>
-                  <span className={styles.name}>{user.fullName}</span>
+                  <span className={styles.name}>
+                    {getUserDisplayName(user)}
+                  </span>
                   <span className={styles.cell}>{user.username}</span>
                   <span className={styles.cell}>{user.email}</span>
-                  <span className={styles.cell}>{roleLabels[user.role]}</span>
-                  <span className={styles.cell}>{user.universityName}</span>
+                  <span className={styles.cell}>
+                    {getUserRoleLabel(user.role)}
+                  </span>
+                  <span className={styles.cell}>
+                    {user.universityName ?? "-"}
+                  </span>
 
                   <span>
                     <span
                       className={
-                        user.status === "active"
+                        user.isActive
                           ? styles.statusActive
                           : styles.statusBlocked
                       }
                     >
-                      {user.status === "active" ? "Активен" : "Заблокирован"}
+                      {user.isActive ? "Активен" : "Заблокирован"}
                     </span>
                   </span>
 
@@ -340,13 +450,15 @@ export function AdminUsersPage() {
             </div>
           </div>
         ) : (
-          <div className={styles.emptyState}>
-            <h3 className={styles.emptyTitle}>Пользователи не найдены</h3>
-            <p className={styles.emptyText}>
-              Измените поисковый запрос, фильтр роли или добавьте нового
-              пользователя.
-            </p>
-          </div>
+          !isLoading && (
+            <div className={styles.emptyState}>
+              <h3 className={styles.emptyTitle}>Пользователи не найдены</h3>
+              <p className={styles.emptyText}>
+                Измените поисковый запрос, фильтр роли или добавьте нового
+                пользователя.
+              </p>
+            </div>
+          )
         )}
       </div>
     </section>

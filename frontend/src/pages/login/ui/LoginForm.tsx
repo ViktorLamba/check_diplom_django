@@ -4,6 +4,7 @@ import type {
   UseFormRegister,
 } from "react-hook-form";
 import type { LoginFormValues } from "../model/loginSchema";
+import { Link } from "react-router-dom";
 import styles from "./LoginPage.module.scss";
 
 type LoginFormProps = {
@@ -73,9 +74,9 @@ export function LoginForm({
             <span>Запомнить меня</span>
           </label>
 
-          <a href="#" className={styles.link}>
+          <Link to="/forgot-password" className={styles.link}>
             Забыли пароль?
-          </a>
+          </Link>
         </div>
       </form>
     </>

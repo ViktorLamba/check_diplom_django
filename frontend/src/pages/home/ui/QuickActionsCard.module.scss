@@ -39,9 +39,15 @@
   line-height: 1.5;
 }
 
-.actions {
+.actionsStack {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -57,6 +63,7 @@
     linear-gradient(135deg, rgba(255, 60, 100, 0.12), rgba(180, 80, 255, 0.12)),
     rgba(255, 255, 255, 0.03);
   color: rgb(255, 255, 255);
+  min-height: 72px;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
