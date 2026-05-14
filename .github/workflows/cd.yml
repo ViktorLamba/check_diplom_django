@@ -100,6 +100,8 @@ jobs:
             EOF_ENV
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            export COMPOSE_HTTP_TIMEOUT=300
+            export DOCKER_CLIENT_TIMEOUT=300
 
             if docker compose version >/dev/null 2>&1; then
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull
@@ -107,9 +109,13 @@ jobs:
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             else
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" down --remove-orphans || true
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" down --remove-orphans --timeout 120 || true
+              PROJECT_CONTAINERS="$(docker ps -aq --filter "name=^/${PROJECT_NAME}_")"
+              if [ -n "${PROJECT_CONTAINERS}" ]; then
+                docker rm -f ${PROJECT_CONTAINERS} || true
+              fi
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
+              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --remove-orphans
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
               EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             fi

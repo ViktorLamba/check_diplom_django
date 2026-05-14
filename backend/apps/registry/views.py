@@ -58,6 +58,19 @@ def _require_admin(request):
     return None
 
 
+def _require_admin_or_university(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
+
+    if request.user.is_staff or request.user.is_superuser:
+        return None
+
+    if getattr(request.user, 'university', None) is not None:
+        return None
+
+    return JsonResponse({'detail': 'Доступно только администратору или пользователю вуза.'}, status=403)
+
+
 def _positive_int(value, default, max_value=None):
     try:
         parsed = int(value)
@@ -93,6 +106,39 @@ def _university_payload(university):
         'username': university.user.username,
         'email': university.user.email,
         'createdAt': university.created_at.date().isoformat(),
+    }
+
+
+def _user_role(user):
+    university = getattr(user, 'university', None)
+    student = getattr(user, 'student', None)
+
+    if user.is_staff or user.is_superuser:
+        return 'admin'
+    if university is not None:
+        return 'university'
+    if student is not None:
+        return 'student'
+    return 'user'
+
+
+def _user_payload(user):
+    university = getattr(user, 'university', None)
+    student = getattr(user, 'student', None)
+    student_university = student.university if student is not None else None
+    related_university = university or student_university
+
+    return {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'role': _user_role(user),
+        'universityId': related_university.id if related_university is not None else None,
+        'universityName': related_university.name if related_university is not None else None,
+        'studentId': student.id if student is not None else None,
+        'studentName': student.full_name if student is not None else None,
+        'isActive': user.is_active,
+        'createdAt': user.date_joined.date().isoformat(),
     }
 
 
@@ -230,6 +276,72 @@ def public_stats_view(request):
         },
         status=200,
     )
+
+
+@require_http_methods(['GET'])
+def users_view(request):
+    error = _require_admin_or_university(request)
+    if error is not None:
+        return error
+
+    users = (
+        User.objects
+        .select_related('university', 'student__university')
+        .order_by('-date_joined', '-id')
+    )
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        university = request.user.university
+        users = users.filter(Q(id=request.user.id) | Q(student__university=university))
+
+    role = (request.GET.get('role') or '').strip()
+    if role:
+        if role == 'admin':
+            users = users.filter(Q(is_staff=True) | Q(is_superuser=True))
+        elif role == 'university':
+            users = users.filter(university__isnull=False, is_staff=False, is_superuser=False)
+        elif role == 'student':
+            users = users.filter(student__isnull=False, is_staff=False, is_superuser=False)
+        elif role == 'user':
+            users = users.filter(university__isnull=True, student__isnull=True, is_staff=False, is_superuser=False)
+        else:
+            return JsonResponse({'detail': 'Некорректная роль пользователя.'}, status=400)
+
+    search = (request.GET.get('search') or '').strip()
+    if search:
+        users = users.filter(
+            Q(username__icontains=search)
+            | Q(email__icontains=search)
+            | Q(university__name__icontains=search)
+            | Q(student__full_name__icontains=search)
+            | Q(student__university__name__icontains=search)
+        )
+
+    return _paginated_response(users, request, _user_payload)
+
+
+@require_http_methods(['DELETE'])
+def user_detail_view(request, user_id):
+    error = _require_admin(request)
+    if error is not None:
+        return error
+
+    user = User.objects.filter(id=user_id).first()
+    if user is None:
+        return JsonResponse({'detail': 'Пользователь не найден.'}, status=404)
+
+    university = getattr(user, 'university', None)
+    student_user_ids = []
+    if university is not None:
+        student_user_ids = list(
+            university.students.exclude(user__isnull=True).values_list('user_id', flat=True)
+        )
+
+    user.delete()
+    if student_user_ids:
+        User.objects.filter(id__in=student_user_ids).delete()
+
+    return HttpResponse(status=204)
 
 
 @require_http_methods(['GET', 'POST'])

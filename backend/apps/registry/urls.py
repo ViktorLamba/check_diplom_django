@@ -9,12 +9,16 @@ from .views import (
     public_stats_view,
     student_detail_view,
     students_view,
+    user_detail_view,
+    users_view,
     universities_view,
     university_detail_view,
 )
 
 urlpatterns = [
     path('public/stats/', public_stats_view, name='public_stats'),
+    path('users/', users_view, name='users'),
+    path('users/<int:user_id>/', user_detail_view, name='user_detail'),
     path('universities/', universities_view, name='universities'),
     path('universities/<int:university_id>/', university_detail_view, name='university_detail'),
     path('students/', students_view, name='students'),
