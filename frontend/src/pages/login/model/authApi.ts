@@ -89,3 +89,20 @@ export function confirmPasswordReset(payload: PasswordResetConfirmPayload) {
     body: payload,
   });
 }
+
+export type ChangePasswordPayload = {
+  oldPassword: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+};
+
+export type ChangePasswordResponse = {
+  detail: string;
+};
+
+export function changePassword(payload: ChangePasswordPayload) {
+  return request<ChangePasswordResponse>("/api/auth/change-password/", {
+    method: "POST",
+    body: payload,
+  });
+}

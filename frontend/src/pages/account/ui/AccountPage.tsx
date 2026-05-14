@@ -1,5 +1,8 @@
 import { useAuth } from "@/shared/auth/AuthContext";
 import type { AuthUser, UserRole } from "@/shared/auth/types";
+import { useState, type FormEvent } from "react";
+import { changePassword } from "@/pages/login/model/authApi";
+
 import styles from "./AccountPage.module.scss";
 
 const roleLabels: Record<UserRole, string> = {
@@ -31,6 +34,46 @@ export function AccountPage() {
   const email = user?.email ?? "Не указано";
   const role = user?.role ? roleLabels[user.role] : "Не указано";
   const roleDetails = getRoleDetails(user);
+
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
+
+  const handleChangePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!oldPassword || !newPassword || !newPasswordConfirm) {
+      setPasswordError("Заполните все поля.");
+      setPasswordMessage("");
+      return;
+    }
+
+    try {
+      setIsPasswordSubmitting(true);
+      setPasswordError("");
+      setPasswordMessage("");
+
+      const response = await changePassword({
+        oldPassword,
+        newPassword,
+        newPasswordConfirm,
+      });
+
+      setPasswordMessage(response.detail || "Пароль успешно изменён.");
+      setOldPassword("");
+      setNewPassword("");
+      setNewPasswordConfirm("");
+    } catch (error) {
+      setPasswordError(
+        error instanceof Error ? error.message : "Не удалось изменить пароль.",
+      );
+    } finally {
+      setIsPasswordSubmitting(false);
+    }
+  };
 
   return (
     <section className={styles.page}>
@@ -78,20 +121,52 @@ export function AccountPage() {
         <div className={styles.divider} />
 
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Безопасность</h2>
-
           <div className={styles.infoList}>
-            <div className={styles.infoRow}>
-              <span className={styles.label}>Смена пароля</span>
-              <span className={styles.valueMuted}>Скоро будет доступно</span>
-            </div>
+            <form
+              className={styles.passwordForm}
+              onSubmit={handleChangePassword}
+            >
+              <h3 className={styles.formTitle}>Смена пароля</h3>
 
-            <div className={styles.infoRow}>
-              <span className={styles.label}>
-                Управление безопасностью входа
-              </span>
-              <span className={styles.valueMuted}>Скоро будет доступно</span>
-            </div>
+              <input
+                className={styles.input}
+                type="password"
+                value={oldPassword}
+                placeholder="Текущий пароль"
+                onChange={(event) => setOldPassword(event.target.value)}
+              />
+
+              <input
+                className={styles.input}
+                type="password"
+                value={newPassword}
+                placeholder="Новый пароль"
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+
+              <input
+                className={styles.input}
+                type="password"
+                value={newPasswordConfirm}
+                placeholder="Повторите новый пароль"
+                onChange={(event) => setNewPasswordConfirm(event.target.value)}
+              />
+
+              {passwordError && (
+                <p className={styles.errorText}>{passwordError}</p>
+              )}
+              {passwordMessage && (
+                <p className={styles.successText}>{passwordMessage}</p>
+              )}
+
+              <button
+                className={styles.primaryButton}
+                type="submit"
+                disabled={isPasswordSubmitting}
+              >
+                {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
+              </button>
+            </form>
           </div>
         </div>
       </div>
