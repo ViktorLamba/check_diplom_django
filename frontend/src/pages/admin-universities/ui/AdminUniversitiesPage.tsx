@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createUniversity,
+  deleteUniversity,
   getUniversities,
+  updateUniversity,
   type University,
 } from "../model/universitiesApi";
 import styles from "./AdminUniversitiesPage.module.scss";
 
 const pageSize = 10;
+
+const initialForm = {
+  name: "",
+  email: "",
+  username: "",
+};
 
 export function AdminUniversitiesPage() {
   const [universities, setUniversities] = useState<University[]>([]);
@@ -18,11 +26,10 @@ export function AdminUniversitiesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    username: "",
-  });
+  const [editingUniversity, setEditingUniversity] = useState<University | null>(
+    null,
+  );
+  const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
     const loadUniversities = async () => {
@@ -54,6 +61,53 @@ export function AdminUniversitiesPage() {
 
   const filteredUniversities = useMemo(() => universities, [universities]);
 
+  const resetForm = () => {
+    setForm(initialForm);
+    setEditingUniversity(null);
+    setFormError("");
+  };
+
+  const handleEdit = (university: University) => {
+    setEditingUniversity(university);
+    setIsFormOpen(true);
+    setFormError("");
+    setForm({
+      name: university.name,
+      email: university.email,
+      username: university.username,
+    });
+  };
+
+  const handleDelete = async (university: University) => {
+    const shouldDelete = window.confirm(
+      `Удалить вуз "${university.name}"? Будут удалены связанные записи.`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      setListError("");
+
+      await deleteUniversity(university.id);
+
+      setUniversities((currentUniversities) =>
+        currentUniversities.filter((item) => item.id !== university.id),
+      );
+      setTotalCount((currentCount) => Math.max(currentCount - 1, 0));
+
+      if (editingUniversity?.id === university.id) {
+        resetForm();
+        setIsFormOpen(false);
+      }
+    } catch (error) {
+      setListError(
+        error instanceof Error ? error.message : "Не удалось удалить вуз.",
+      );
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -70,22 +124,43 @@ export function AdminUniversitiesPage() {
       setIsSubmitting(true);
       setFormError("");
 
-      const newUniversity = await createUniversity({
-        name,
-        email,
-        username,
-      });
+      if (editingUniversity) {
+        const updatedUniversity = await updateUniversity(editingUniversity.id, {
+          name,
+          email,
+          username,
+        });
 
-      setUniversities((currentUniversities) => [
-        newUniversity,
-        ...currentUniversities,
-      ]);
-      setTotalCount((currentCount) => currentCount + 1);
-      setForm({ name: "", email: "", username: "" });
+        setUniversities((currentUniversities) =>
+          currentUniversities.map((university) =>
+            university.id === updatedUniversity.id
+              ? updatedUniversity
+              : university,
+          ),
+        );
+      } else {
+        const newUniversity = await createUniversity({
+          name,
+          email,
+          username,
+        });
+
+        setUniversities((currentUniversities) => [
+          newUniversity,
+          ...currentUniversities,
+        ]);
+        setTotalCount((currentCount) => currentCount + 1);
+      }
+
+      resetForm();
       setIsFormOpen(false);
     } catch (error) {
       setFormError(
-        error instanceof Error ? error.message : "Не удалось создать вуз.",
+        error instanceof Error
+          ? error.message
+          : editingUniversity
+            ? "Не удалось обновить вуз."
+            : "Не удалось создать вуз.",
       );
     } finally {
       setIsSubmitting(false);
@@ -108,8 +183,14 @@ export function AdminUniversitiesPage() {
             className={styles.primaryButton}
             type="button"
             onClick={() => {
-              setIsFormOpen((currentValue) => !currentValue);
-              setFormError("");
+              if (isFormOpen) {
+                setIsFormOpen(false);
+                resetForm();
+                return;
+              }
+
+              setIsFormOpen(true);
+              resetForm();
             }}
           >
             {isFormOpen ? "Скрыть форму" : "Добавить вуз"}
@@ -201,7 +282,11 @@ export function AdminUniversitiesPage() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Сохранение..." : "Сохранить вуз"}
+              {isSubmitting
+                ? "Сохранение..."
+                : editingUniversity
+                  ? "Сохранить изменения"
+                  : "Сохранить вуз"}
             </button>
           </form>
         )}
@@ -232,6 +317,7 @@ export function AdminUniversitiesPage() {
               <span>Логин</span>
               <span>Email</span>
               <span>Дата создания</span>
+              <span>Действия</span>
             </div>
 
             <div className={styles.body}>
@@ -241,6 +327,23 @@ export function AdminUniversitiesPage() {
                   <span className={styles.cell}>{university.username}</span>
                   <span className={styles.cell}>{university.email}</span>
                   <span className={styles.cell}>{university.createdAt}</span>
+                  <span className={styles.actions}>
+                    <button
+                      className={styles.primaryButton}
+                      type="button"
+                      onClick={() => handleEdit(university)}
+                    >
+                      Изменить
+                    </button>
+
+                    <button
+                      className={styles.dangerButton}
+                      type="button"
+                      onClick={() => handleDelete(university)}
+                    >
+                      Удалить
+                    </button>
+                  </span>
                 </div>
               ))}
             </div>

@@ -25,7 +25,6 @@ const initialForm: DiplomaForm = {
 
 const diplomaStatusLabels: Record<DiplomaStatus, string> = {
   valid: "Подтверждён",
-  pending: "На проверке",
   revoked: "Отозван",
 };
 
@@ -84,7 +83,7 @@ export function CreateDiplomaPage() {
       return styles.statusValid;
     }
 
-    return styles.statusPending;
+    return styles.statusRevoked;
   };
 
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {

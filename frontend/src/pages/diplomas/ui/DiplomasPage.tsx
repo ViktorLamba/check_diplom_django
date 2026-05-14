@@ -8,7 +8,6 @@ import styles from "./DiplomasPage.module.scss";
 
 const diplomaStatusLabels: Record<DiplomaStatus, string> = {
   valid: "Подтверждён",
-  pending: "На проверке",
   revoked: "Отозван",
 };
 
@@ -60,13 +59,31 @@ export function DiplomasPage() {
     (diploma) => diploma.status === "valid",
   ).length;
 
-  const pendingCount = diplomas.filter(
-    (diploma) => diploma.status === "pending",
-  ).length;
-
   const revokedCount = diplomas.filter(
     (diploma) => diploma.status === "revoked",
   ).length;
+
+  const getDiplomaPublicUrl = (diploma: Diploma) => {
+    const url = diploma.verificationUrl || `/diplom/${diploma.publicId}`;
+
+    if (!url || url.includes("undefined") || url.includes("null")) {
+      return null;
+    }
+
+    return url.startsWith("http") ? url : `${window.location.origin}${url}`;
+  };
+
+  const handleCopyUrl = async (diploma: Diploma) => {
+    const url = getDiplomaPublicUrl(diploma);
+
+    if (!url) {
+      setListError("Для этого диплома пока нет публичной ссылки.");
+      return;
+    }
+
+    await navigator.clipboard.writeText(url);
+    setListError("Ссылка на диплом скопирована.");
+  };
 
   return (
     <section className={styles.page}>
@@ -88,11 +105,6 @@ export function DiplomasPage() {
             <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Подтверждённых</span>
               <strong className={styles.summaryValue}>{validCount}</strong>
-            </div>
-
-            <div className={styles.summaryItem}>
-              <span className={styles.summaryLabel}>На проверке</span>
-              <strong className={styles.summaryValue}>{pendingCount}</strong>
             </div>
 
             <div className={styles.summaryItem}>
@@ -123,7 +135,6 @@ export function DiplomasPage() {
             >
               <option value="">Все статусы</option>
               <option value="valid">Подтверждённые</option>
-              <option value="pending">На проверке</option>
               <option value="revoked">Отозванные</option>
             </select>
           </div>
@@ -143,7 +154,7 @@ export function DiplomasPage() {
                 <span>Специальность</span>
                 <span>Дата выдачи</span>
                 <span>Статус</span>
-                <span>QR</span>
+                <span>Действия</span>
               </div>
 
               <div className={styles.body}>
@@ -161,16 +172,35 @@ export function DiplomasPage() {
                         className={
                           diploma.status === "valid"
                             ? styles.statusValid
-                            : diploma.status === "pending"
-                              ? styles.statusPending
-                              : styles.statusRevoked
+                            : styles.statusRevoked
                         }
                       >
                         {diplomaStatusLabels[diploma.status]}
                       </span>
                     </span>
-                    <span className={styles.cell}>
-                      {diploma.qrCodeUrl ? "Доступен" : "Нет"}
+                    <span className={styles.actions}>
+                      {getDiplomaPublicUrl(diploma) ? (
+                        <>
+                          <a
+                            className={styles.actionButton}
+                            href={getDiplomaPublicUrl(diploma) ?? undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            QR
+                          </a>
+
+                          <button
+                            className={styles.actionButton}
+                            type="button"
+                            onClick={() => void handleCopyUrl(diploma)}
+                          >
+                            Копировать
+                          </button>
+                        </>
+                      ) : (
+                        <span className={styles.cell}>Нет ссылки</span>
+                      )}
                     </span>
                   </div>
                 ))}

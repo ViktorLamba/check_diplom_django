@@ -1,11 +1,16 @@
-import { recentChecks } from "../model/dashboardData";
+import type { RecentCheck } from "../model/dashboardData";
 import styles from "./RecentChecksCard.module.scss";
 
-export function RecentChecksCard() {
+type RecentChecksCardProps = {
+  title: string;
+  checks: RecentCheck[];
+};
+
+export function RecentChecksCard({ title, checks }: RecentChecksCardProps) {
   return (
     <section className={styles.card}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Последние проверки</h2>
+        <h2 className={styles.title}>{title}</h2>
       </div>
 
       <div className={styles.table}>
@@ -17,7 +22,7 @@ export function RecentChecksCard() {
         </div>
 
         <div className={styles.body}>
-          {recentChecks.map((check) => (
+          {checks.map((check) => (
             <div key={check.id} className={styles.row}>
               <div className={styles.statusCell}>
                 <span

@@ -1,57 +1,81 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  initialVerificationLogs,
-  verificationStatusLabels,
-  verificationTypeLabels,
-  type VerificationLogStatus,
-  type VerificationLogType,
-} from "../model/verificationLogsMock";
+  getVerificationLogs,
+  type VerificationLog,
+  type VerificationSource,
+  type VerificationStatus,
+} from "@/pages/diplomas/model/diplomasApi";
 import styles from "./HistoryPage.module.scss";
 
+const pageSize = 10;
+
+const verificationStatusLabels: Record<VerificationStatus, string> = {
+  verified: "Подтверждён",
+  not_found: "Не найден",
+  revoked: "Отозван",
+};
+
+const verificationSourceLabels: Record<VerificationSource, string> = {
+  form: "Проверка через форму",
+  public: "Открытие публичной страницы / QR",
+};
+
 export function HistoryPage() {
+  const [logs, setLogs] = useState<VerificationLog[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<VerificationLogStatus | "">(
-    "",
+  const [statusFilter, setStatusFilter] = useState<VerificationStatus | "">("");
+  const [sourceFilter, setSourceFilter] = useState<VerificationSource | "">("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [listError, setListError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      try {
+        setIsLoading(true);
+        setListError("");
+
+        const response = await getVerificationLogs({
+          search: search.trim(),
+          status: statusFilter,
+          source: sourceFilter,
+          page,
+          page_size: pageSize,
+        });
+
+        setLogs(response.results);
+        setTotalCount(response.count);
+      } catch (error) {
+        setLogs([]);
+        setTotalCount(0);
+        setListError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить журнал проверок.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadLogs();
+  }, [search, statusFilter, sourceFilter, page]);
+
+  const verifiedCount = useMemo(
+    () => logs.filter((log) => log.verificationStatus === "verified").length,
+    [logs],
   );
-  const [typeFilter, setTypeFilter] = useState<VerificationLogType | "">("");
 
-  const filteredLogs = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  const notFoundCount = useMemo(
+    () => logs.filter((log) => log.verificationStatus === "not_found").length,
+    [logs],
+  );
 
-    return initialVerificationLogs.filter((log) => {
-      const matchesStatus = statusFilter ? log.status === statusFilter : true;
-      const matchesType = typeFilter ? log.type === typeFilter : true;
-
-      const matchesSearch = normalizedSearch
-        ? [
-            log.diplomaNumber,
-            log.owner,
-            log.universityName,
-            log.speciality,
-            log.checkedBy,
-            verificationStatusLabels[log.status],
-            verificationTypeLabels[log.type],
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedSearch)
-        : true;
-
-      return matchesStatus && matchesType && matchesSearch;
-    });
-  }, [search, statusFilter, typeFilter]);
-
-  const validCount = initialVerificationLogs.filter(
-    (log) => log.status === "valid",
-  ).length;
-
-  const invalidCount = initialVerificationLogs.filter(
-    (log) => log.status === "invalid",
-  ).length;
-
-  const revokedCount = initialVerificationLogs.filter(
-    (log) => log.status === "revoked",
-  ).length;
+  const revokedCount = useMemo(
+    () => logs.filter((log) => log.verificationStatus === "revoked").length,
+    [logs],
+  );
 
   return (
     <section className={styles.page}>
@@ -60,7 +84,7 @@ export function HistoryPage() {
           <div className={styles.topBlock}>
             <h2 className={styles.sectionTitle}>Журнал проверок</h2>
             <p className={styles.sectionSubtitle}>
-              Логи проверок дипломов с фильтрацией по статусу, типу проверки,
+              Логи проверок дипломов с фильтрацией по статусу, источнику,
               пользователю и вузу.
             </p>
           </div>
@@ -68,19 +92,17 @@ export function HistoryPage() {
           <div className={styles.summaryGrid}>
             <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Всего проверок</span>
-              <strong className={styles.summaryValue}>
-                {initialVerificationLogs.length}
-              </strong>
+              <strong className={styles.summaryValue}>{totalCount}</strong>
             </div>
 
             <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Подтверждено</span>
-              <strong className={styles.summaryValue}>{validCount}</strong>
+              <strong className={styles.summaryValue}>{verifiedCount}</strong>
             </div>
 
             <div className={styles.summaryItem}>
               <span className={styles.summaryLabel}>Не найдено</span>
-              <strong className={styles.summaryValue}>{invalidCount}</strong>
+              <strong className={styles.summaryValue}>{notFoundCount}</strong>
             </div>
 
             <div className={styles.summaryItem}>
@@ -94,40 +116,48 @@ export function HistoryPage() {
               className={styles.input}
               type="search"
               value={search}
-              placeholder="Поиск по диплому, владельцу, вузу или пользователю"
-              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Поиск по диплому, владельцу или вузу"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
             />
 
             <select
               className={styles.select}
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(
-                  event.target.value as VerificationLogStatus | "",
-                )
-              }
+              onChange={(event) => {
+                setStatusFilter(event.target.value as VerificationStatus | "");
+                setPage(1);
+              }}
             >
               <option value="">Все статусы</option>
-              <option value="valid">Подтверждён</option>
-              <option value="invalid">Не найден</option>
+              <option value="verified">Подтверждён</option>
+              <option value="not_found">Не найден</option>
               <option value="revoked">Отозван</option>
             </select>
 
             <select
               className={styles.select}
-              value={typeFilter}
-              onChange={(event) =>
-                setTypeFilter(event.target.value as VerificationLogType | "")
-              }
+              value={sourceFilter}
+              onChange={(event) => {
+                setSourceFilter(event.target.value as VerificationSource | "");
+                setPage(1);
+              }}
             >
-              <option value="">Все типы</option>
-              <option value="manual">Ручная проверка</option>
-              <option value="qr">QR-код</option>
-              <option value="api">API-запрос</option>
+              <option value="">Все источники</option>
+              <option value="form">Проверка через форму</option>
+              <option value="public">Публичная страница / QR</option>
             </select>
           </div>
 
-          {filteredLogs.length > 0 ? (
+          {listError && <p className={styles.emptyText}>{listError}</p>}
+
+          {isLoading ? (
+            <div className={styles.emptyState}>
+              <h3 className={styles.emptyTitle}>Загрузка логов...</h3>
+            </div>
+          ) : logs.length > 0 ? (
             <div className={styles.table}>
               <div className={styles.headRow}>
                 <span>Статус</span>
@@ -135,35 +165,45 @@ export function HistoryPage() {
                 <span>Диплом</span>
                 <span>Владелец</span>
                 <span>Вуз</span>
-                <span>Тип</span>
-                <span>Пользователь</span>
+                <span>Источник</span>
+                <span>IP</span>
               </div>
 
               <div className={styles.body}>
-                {filteredLogs.map((log) => (
+                {logs.map((log) => (
                   <div key={log.id} className={styles.row}>
                     <span>
                       <span
                         className={
-                          log.status === "valid"
+                          log.verificationStatus === "verified"
                             ? styles.statusValid
-                            : log.status === "invalid"
+                            : log.verificationStatus === "not_found"
                               ? styles.statusInvalid
                               : styles.statusRevoked
                         }
                       >
-                        {verificationStatusLabels[log.status]}
+                        {verificationStatusLabels[log.verificationStatus]}
                       </span>
                     </span>
 
-                    <span className={styles.cell}>{log.checkedAt}</span>
-                    <span className={styles.number}>{log.diplomaNumber}</span>
-                    <span className={styles.cell}>{log.owner}</span>
-                    <span className={styles.cell}>{log.universityName}</span>
                     <span className={styles.cell}>
-                      {verificationTypeLabels[log.type]}
+                      {new Date(log.createdAt).toLocaleString("ru-RU")}
                     </span>
-                    <span className={styles.cell}>{log.checkedBy}</span>
+                    <span className={styles.number}>
+                      {log.diploma?.number ?? log.requestedNumber}
+                    </span>
+                    <span className={styles.cell}>
+                      {log.diploma?.owner ?? "Не найден"}
+                    </span>
+                    <span className={styles.cell}>
+                      {log.universityName ?? log.diploma?.universityName ?? "-"}
+                    </span>
+                    <span className={styles.cell}>
+                      {verificationSourceLabels[log.source]}
+                    </span>
+                    <span className={styles.cell}>
+                      {log.requesterIp ?? "-"}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -172,8 +212,32 @@ export function HistoryPage() {
             <div className={styles.emptyState}>
               <h3 className={styles.emptyTitle}>Логи не найдены</h3>
               <p className={styles.emptyText}>
-                Измените поисковый запрос, статус или тип проверки.
+                Измените поисковый запрос, статус или источник проверки.
               </p>
+            </div>
+          )}
+
+          {totalCount > pageSize && (
+            <div className={styles.toolbar}>
+              <button
+                className={styles.select}
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+              >
+                Назад
+              </button>
+
+              <span className={styles.sectionSubtitle}>Страница {page}</span>
+
+              <button
+                className={styles.select}
+                type="button"
+                disabled={page * pageSize >= totalCount}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+              >
+                Вперёд
+              </button>
             </div>
           )}
         </div>

@@ -4,11 +4,12 @@ import {
   type Diploma,
   type DiplomaStatus,
 } from "@/pages/diplomas/model/diplomasApi";
+import { QRCodeSVG } from "qrcode.react";
+import { useNavigate } from "react-router-dom";
 import styles from "./MyDiplomasPage.module.scss";
 
 const myDiplomaStatusLabels: Record<DiplomaStatus, string> = {
   valid: "Подтверждён",
-  pending: "На проверке",
   revoked: "Отозван",
 };
 
@@ -78,8 +79,8 @@ export function MyDiplomasPage() {
     (diploma) => diploma.status === "valid",
   ).length;
 
-  const pendingCount = diplomas.filter(
-    (diploma) => diploma.status === "pending",
+  const revokedCount = diplomas.filter(
+    (diploma) => diploma.status === "revoked",
   ).length;
 
   const getStatusClassName = (status: DiplomaStatus) => {
@@ -87,16 +88,32 @@ export function MyDiplomasPage() {
       return styles.statusValid;
     }
 
-    if (status === "pending") {
-      return styles.statusPending;
-    }
-
     return styles.statusRevoked;
   };
 
   const handleSelectDiploma = (diploma: Diploma) => {
-    setSelectedDiplomaId(diploma.id);
+    const url = getDiplomaPublicUrl(diploma);
+
+    if (url) {
+      navigate(new URL(url).pathname);
+    }
   };
+
+  const getDiplomaPublicUrl = (diploma: Diploma) => {
+    const url = diploma.verificationUrl || `/diplom/${diploma.publicId}`;
+
+    if (!url || url.includes("undefined") || url.includes("null")) {
+      return null;
+    }
+
+    return url.startsWith("http") ? url : `${window.location.origin}${url}`;
+  };
+
+  const selectedDiplomaPublicUrl = selectedDiploma
+    ? getDiplomaPublicUrl(selectedDiploma)
+    : null;
+
+  const navigate = useNavigate();
 
   return (
     <section className={styles.page}>
@@ -131,9 +148,9 @@ export function MyDiplomasPage() {
                 </div>
 
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>На проверке</span>
+                  <span className={styles.summaryLabel}>Отозванных</span>
                   <strong className={styles.summaryValue}>
-                    {pendingCount}
+                    {revokedCount}
                   </strong>
                 </div>
               </div>
@@ -217,18 +234,28 @@ export function MyDiplomasPage() {
                       </div>
                     </div>
 
-                    <div className={styles.qrBlock}>
-                      <div className={styles.qrPlaceholder}>QR</div>
+                    {selectedDiplomaPublicUrl && (
+                      <div className={styles.qrBlock}>
+                        <div className={styles.qrPlaceholder}>
+                          <QRCodeSVG
+                            value={selectedDiplomaPublicUrl}
+                            size={82}
+                          />
+                        </div>
 
-                      <div className={styles.qrTextBlock}>
-                        <h4 className={styles.qrTitle}>QR-код диплома</h4>
-                        <p className={styles.qrText}>
-                          {selectedDiploma.qrCodeUrl
-                            ? "QR-код доступен для этого диплома."
-                            : "QR-код пока не был сформирован."}
-                        </p>
+                        <div className={styles.qrTextBlock}>
+                          <h4 className={styles.qrTitle}>
+                            Публичная ссылка на диплом
+                          </h4>
+                          <a
+                            className={styles.qrText}
+                            href={selectedDiplomaPublicUrl}
+                          >
+                            Открыть диплом
+                          </a>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>

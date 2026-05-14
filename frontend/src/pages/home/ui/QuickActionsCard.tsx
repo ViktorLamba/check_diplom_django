@@ -1,7 +1,14 @@
-import { quickActions } from "../model/dashboardData";
+import { useNavigate } from "react-router-dom";
+import type { QuickAction } from "../model/dashboardData";
 import styles from "./QuickActionsCard.module.scss";
 
-export function QuickActionsCard() {
+type QuickActionsCardProps = {
+  actions: QuickAction[];
+};
+
+export function QuickActionsCard({ actions }: QuickActionsCardProps) {
+  const navigate = useNavigate();
+
   return (
     <section className={styles.card}>
       <div className={styles.header}>
@@ -12,11 +19,14 @@ export function QuickActionsCard() {
       </div>
 
       <div className={styles.actions}>
-        {quickActions.map((action) => (
-          <button key={action.id} type="button" className={styles.actionButton}>
-            <span className={styles.actionIcon}>
-              {action.id === "verify" ? "D" : "Q"}
-            </span>
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            className={styles.actionButton}
+            onClick={() => navigate(action.to)}
+          >
+            <span className={styles.actionIcon}>{action.icon}</span>
             <span className={styles.actionLabel}>{action.label}</span>
           </button>
         ))}

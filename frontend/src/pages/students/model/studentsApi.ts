@@ -23,6 +23,14 @@ export type CreateStudentPayload = {
   course: number;
 };
 
+export type UpdateStudentPayload = {
+  fullName: string;
+  email: string;
+  group: string;
+  course: number;
+  status: StudentStatus;
+};
+
 export function getStudents(params: {
   search?: string;
   status?: StudentStatus | "";
@@ -44,6 +52,13 @@ export function getStudents(params: {
 export function createStudent(payload: CreateStudentPayload) {
   return request<Student>("/api/students/", {
     method: "POST",
+    body: payload,
+  });
+}
+
+export function updateStudent(id: number, payload: UpdateStudentPayload) {
+  return request<Student>(`/api/students/${id}/`, {
+    method: "PUT",
     body: payload,
   });
 }
