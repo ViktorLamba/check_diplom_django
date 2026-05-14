@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import Client, TestCase
 
-from .models import Diploma, Student, University
+from .models import Diploma, DiplomaVerificationLog, Student, University
 
 User = get_user_model()
 
@@ -508,6 +508,306 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.json()['results'][0]['number'], 'DIP-2026-002')
         self.assertEqual(response.json()['results'][0]['universityName'], self.other_university.name)
 
+    def test_verify_diploma_by_number_and_issued_at(self):
+        student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+
+        response = self.client.post(
+            '/api/diplomas/verify/',
+            data=json.dumps(
+                {
+                    'number': 'DIP-2026-001',
+                    'issuedAt': '2026-05-10',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['verified'])
+        self.assertEqual(payload['verificationStatus'], 'verified')
+        self.assertEqual(payload['verificationMessage'], 'Диплом верифицирован.')
+        self.assertEqual(payload['diploma']['owner'], 'Иванов Иван Иванович')
+        self.assertEqual(payload['diploma']['universityName'], self.university.name)
+        self.assertEqual(payload['verificationUrl'], f"/diplom/{payload['diploma']['publicId']}")
+        self.assertEqual(payload['verificationApiUrl'], f"/api/diplom/{payload['diploma']['publicId']}/")
+        log = DiplomaVerificationLog.objects.get()
+        self.assertEqual(log.diploma.number, 'DIP-2026-001')
+        self.assertEqual(log.university, self.university)
+        self.assertEqual(log.verification_status, DiplomaVerificationLog.STATUS_VERIFIED)
+        self.assertTrue(log.verified)
+
+    def test_verify_diploma_accepts_series_and_number(self):
+        student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='AB-123456',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+
+        response = self.client.post(
+            '/api/diplomas/verify/',
+            data=json.dumps(
+                {
+                    'series': 'AB',
+                    'number': '123456',
+                    'issuedAt': '2026-05-10',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['verified'])
+        self.assertEqual(response.json()['diploma']['number'], 'AB-123456')
+
+    def test_public_diploma_view_by_uuid(self):
+        student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        diploma = Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        self.client.logout()
+
+        response = self.client.get(f'/api/diplom/{diploma.public_id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['verified'])
+        self.assertEqual(response.json()['verificationUrl'], f'/diplom/{diploma.public_id}')
+        self.assertEqual(response.json()['diploma']['number'], 'DIP-2026-001')
+        log = DiplomaVerificationLog.objects.get()
+        self.assertEqual(log.source, DiplomaVerificationLog.SOURCE_PUBLIC)
+        self.assertEqual(log.requested_public_id, diploma.public_id)
+        self.assertEqual(log.university, self.university)
+
+    def test_verify_diploma_returns_not_found(self):
+        response = self.client.post(
+            '/api/diplomas/verify/',
+            data=json.dumps(
+                {
+                    'number': 'DIP-404',
+                    'issuedAt': '2026-05-10',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()['verified'])
+        self.assertEqual(response.json()['verificationStatus'], 'not_found')
+        self.assertIsNone(response.json()['diploma'])
+        log = DiplomaVerificationLog.objects.get()
+        self.assertIsNone(log.diploma)
+        self.assertIsNone(log.university)
+        self.assertEqual(log.requested_number, 'DIP-404')
+        self.assertEqual(log.verification_status, DiplomaVerificationLog.STATUS_NOT_FOUND)
+
+    def test_admin_can_view_all_verification_logs(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        own_student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        other_student = Student.objects.create(
+            university=self.other_university,
+            full_name='Петров Петр Петрович',
+            email='petrov@student.spbu.ru',
+            group='ПМ-101',
+            course=1,
+        )
+        own_diploma = Diploma.objects.create(
+            university=self.university,
+            student=own_student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        other_diploma = Diploma.objects.create(
+            university=self.other_university,
+            student=other_student,
+            number='DIP-2026-002',
+            speciality='Математика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        DiplomaVerificationLog.objects.create(
+            diploma=own_diploma,
+            university=self.university,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_number='DIP-2026-001',
+            requested_issued_at='2026-05-10',
+            verification_status=DiplomaVerificationLog.STATUS_VERIFIED,
+            verified=True,
+        )
+        DiplomaVerificationLog.objects.create(
+            diploma=other_diploma,
+            university=self.other_university,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_number='DIP-2026-002',
+            requested_issued_at='2026-05-10',
+            verification_status=DiplomaVerificationLog.STATUS_VERIFIED,
+            verified=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/diplomas/verification-logs/?page_size=1000')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 2)
+        self.assertEqual(len(response.json()['results']), 2)
+
+    def test_university_can_view_only_own_verification_logs(self):
+        own_student = Student.objects.create(
+            university=self.university,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        other_student = Student.objects.create(
+            university=self.other_university,
+            full_name='Петров Петр Петрович',
+            email='petrov@student.spbu.ru',
+            group='ПМ-101',
+            course=1,
+        )
+        own_diploma = Diploma.objects.create(
+            university=self.university,
+            student=own_student,
+            number='DIP-2026-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        other_diploma = Diploma.objects.create(
+            university=self.other_university,
+            student=other_student,
+            number='DIP-2026-002',
+            speciality='Математика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        DiplomaVerificationLog.objects.create(
+            diploma=own_diploma,
+            university=self.university,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_number='DIP-2026-001',
+            requested_issued_at='2026-05-10',
+            verification_status=DiplomaVerificationLog.STATUS_VERIFIED,
+            verified=True,
+        )
+        DiplomaVerificationLog.objects.create(
+            diploma=other_diploma,
+            university=self.other_university,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_number='DIP-2026-002',
+            requested_issued_at='2026-05-10',
+            verification_status=DiplomaVerificationLog.STATUS_VERIFIED,
+            verified=True,
+        )
+        DiplomaVerificationLog.objects.create(
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            requested_number='DIP-404',
+            requested_issued_at='2026-05-10',
+            verification_status=DiplomaVerificationLog.STATUS_NOT_FOUND,
+            verified=False,
+        )
+
+        response = self.client.get('/api/diplomas/verification-logs/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 1)
+        self.assertEqual(response.json()['results'][0]['diploma']['number'], 'DIP-2026-001')
+
+    def test_student_cannot_view_verification_logs(self):
+        student_user = User.objects.create_user(
+            username='student',
+            email='student@example.com',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='student@example.com',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(student_user)
+
+        response = self.client.get('/api/diplomas/verification-logs/')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_paginated_lists_cap_page_size_at_100(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        universities = [
+            University(
+                user=User.objects.create_user(
+                    username=f'university-{index}',
+                    email=f'university-{index}@example.com',
+                    password='StrongPass123',
+                ),
+                name=f'University {index:03d}',
+            )
+            for index in range(101)
+        ]
+        University.objects.bulk_create(universities)
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/universities/?page_size=1000')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 103)
+        self.assertEqual(len(response.json()['results']), 100)
+
     def test_student_can_view_only_own_diplomas(self):
         student_user = User.objects.create_user(
             username='ivanov',
@@ -552,6 +852,10 @@ class RegistryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['count'], 1)
         self.assertEqual(response.json()['results'][0]['number'], 'DIP-2026-010')
+        self.assertEqual(
+            response.json()['results'][0]['verificationUrl'],
+            f"/diplom/{response.json()['results'][0]['publicId']}",
+        )
 
     def test_student_cannot_access_university_diplomas_module(self):
         student_user = User.objects.create_user(
