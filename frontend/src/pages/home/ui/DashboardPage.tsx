@@ -8,6 +8,7 @@ import {
 } from "../model/dashboardData";
 import {
   getAdminDashboardData,
+  getPublicStats,
   getUniversityDashboardData,
 } from "../model/dashboardApi";
 import { StatsGrid } from "./StatsGrid";
@@ -30,7 +31,51 @@ export function DashboardPage({ showAuthPrompt = false }: DashboardPageProps) {
   useEffect(() => {
     if (!user) {
       if (showAuthPrompt) {
-        setDashboardData(publicDashboardData);
+        const loadPublicDashboard = async () => {
+          try {
+            setDashboardData(publicDashboardData);
+
+            const stats = await getPublicStats();
+
+            setDashboardData({
+              ...publicDashboardData,
+              stats: [
+                {
+                  id: "universities",
+                  label: "Всего вузов",
+                  value: new Intl.NumberFormat("ru-RU").format(
+                    stats.universitiesCount,
+                  ),
+                },
+                {
+                  id: "users",
+                  label: "Пользователей",
+                  value: new Intl.NumberFormat("ru-RU").format(
+                    stats.usersCount,
+                  ),
+                },
+                {
+                  id: "diplomas",
+                  label: "Всего дипломов",
+                  value: new Intl.NumberFormat("ru-RU").format(
+                    stats.diplomasCount,
+                  ),
+                },
+                {
+                  id: "checksToday",
+                  label: "Проверок сегодня",
+                  value: new Intl.NumberFormat("ru-RU").format(
+                    stats.checksTodayCount,
+                  ),
+                },
+              ],
+            });
+          } catch {
+            setDashboardData(publicDashboardData);
+          }
+        };
+
+        void loadPublicDashboard();
       }
 
       return;

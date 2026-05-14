@@ -9,6 +9,7 @@ import {
 import { getStudents } from "@/pages/students/model/studentsApi";
 import type { DashboardData, RecentCheck } from "./dashboardData";
 import { getUniversities } from "@/pages/admin-universities/model/universitiesApi";
+import { request } from "@/shared/api/http";
 
 const formatCount = (value: number) =>
   new Intl.NumberFormat("ru-RU").format(value);
@@ -73,13 +74,19 @@ export async function getUniversityDashboardData(
 export async function getAdminDashboardData(
   baseData: DashboardData,
 ): Promise<DashboardData> {
-  const [universities, diplomas, verificationLogs, recentVerificationLogs] =
-    await Promise.all([
-      getUniversities({ page: 1, page_size: 1 }),
-      getDiplomas({ page: 1, page_size: 1 }),
-      getVerificationLogs({ source: "form", page: 1, page_size: 1 }),
-      getVerificationLogs({ source: "form", page: 1, page_size: 5 }),
-    ]);
+  const [
+    universities,
+    diplomas,
+    verificationLogs,
+    recentVerificationLogs,
+    publicStats,
+  ] = await Promise.all([
+    getUniversities({ page: 1, page_size: 1 }),
+    getDiplomas({ page: 1, page_size: 1 }),
+    getVerificationLogs({ source: "form", page: 1, page_size: 1 }),
+    getVerificationLogs({ source: "form", page: 1, page_size: 5 }),
+    getPublicStats(),
+  ]);
 
   return {
     ...baseData,
@@ -92,7 +99,7 @@ export async function getAdminDashboardData(
       {
         id: "users",
         label: "Пользователей",
-        value: "—",
+        value: formatCount(publicStats.usersCount),
       },
       {
         id: "diplomas",
@@ -129,4 +136,15 @@ function verificationLogToRecentCheck(log: VerificationLog): RecentCheck {
     university: log.universityName ?? log.diploma?.universityName ?? "-",
     speciality: log.diploma?.speciality ?? log.requestedNumber ?? "-",
   };
+}
+
+export type PublicStatsResponse = {
+  universitiesCount: number;
+  usersCount: number;
+  diplomasCount: number;
+  checksTodayCount: number;
+};
+
+export function getPublicStats() {
+  return request<PublicStatsResponse>("/api/public/stats/");
 }

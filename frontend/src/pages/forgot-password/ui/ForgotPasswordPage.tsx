@@ -28,7 +28,9 @@ export function ForgotPasswordPage() {
       setMessage(response.detail);
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Не удалось отправить письмо.",
+        error instanceof Error
+          ? error.message
+          : "Если аккаунт найден, мы отправили письмо. Проверьте почту.",
       );
     } finally {
       setIsSubmitting(false);
