@@ -9,6 +9,7 @@ from django.core.paginator import EmptyPage, Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
 
@@ -213,6 +214,19 @@ def _paginated_response(queryset, request, payload_factory):
         {
             'count': paginator.count,
             'results': [payload_factory(item) for item in page_obj.object_list],
+        },
+        status=200,
+    )
+
+
+@require_http_methods(['GET'])
+def public_stats_view(request):
+    return JsonResponse(
+        {
+            'universitiesCount': University.objects.count(),
+            'usersCount': User.objects.count(),
+            'diplomasCount': Diploma.objects.count(),
+            'checksTodayCount': DiplomaVerificationLog.objects.filter(created_at__date=timezone.localdate()).count(),
         },
         status=200,
     )

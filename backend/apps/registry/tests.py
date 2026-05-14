@@ -1,8 +1,10 @@
 import json
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import Client, TestCase
+from django.utils import timezone
 
 from .models import Diploma, DiplomaVerificationLog, Student, University
 
@@ -33,6 +35,60 @@ class RegistryApiTests(TestCase):
         )
 
         self.client.force_login(self.user)
+
+    def test_public_stats_available_without_auth(self):
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        student = Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        diploma = Diploma.objects.create(
+            university=self.university,
+            student=student,
+            number='MSU-001',
+            speciality='Информатика',
+            qualification='Бакалавр',
+            issued_at='2026-05-10',
+        )
+        DiplomaVerificationLog.objects.create(
+            diploma=diploma,
+            university=self.university,
+            source=DiplomaVerificationLog.SOURCE_FORM,
+            verification_status=DiplomaVerificationLog.STATUS_VERIFIED,
+            verified=True,
+        )
+        yesterday_log = DiplomaVerificationLog.objects.create(
+            diploma=diploma,
+            university=self.university,
+            source=DiplomaVerificationLog.SOURCE_PUBLIC,
+            verification_status=DiplomaVerificationLog.STATUS_VERIFIED,
+            verified=True,
+        )
+        DiplomaVerificationLog.objects.filter(id=yesterday_log.id).update(
+            created_at=timezone.now() - timedelta(days=1),
+        )
+
+        self.client.logout()
+        response = self.client.get('/api/public/stats/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                'universitiesCount': 2,
+                'usersCount': 3,
+                'diplomasCount': 1,
+                'checksTodayCount': 1,
+            },
+        )
 
     def test_admin_can_create_university_account_and_email_generated_password(self):
         admin = User.objects.create_user(
