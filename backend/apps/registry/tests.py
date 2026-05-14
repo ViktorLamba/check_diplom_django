@@ -90,6 +90,254 @@ class RegistryApiTests(TestCase):
             },
         )
 
+    def test_users_list_requires_admin_or_university(self):
+        self.client.logout()
+        response_without_auth = self.client.get('/api/users/')
+
+        self.assertEqual(response_without_auth.status_code, 401)
+
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(student_user)
+        response = self.client.get('/api/users/')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_can_list_users_with_search_and_role_filter(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        student = Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/users/?search=иванов&role=student&page=1&page_size=10')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['count'], 1)
+        self.assertEqual(
+            payload['results'][0],
+            {
+                'id': student_user.id,
+                'username': 'ivanov',
+                'email': 'ivanov@student.msu.ru',
+                'role': 'student',
+                'universityId': self.university.id,
+                'universityName': self.university.name,
+                'studentId': student.id,
+                'studentName': 'Иванов Иван Иванович',
+                'isActive': True,
+                'createdAt': student_user.date_joined.date().isoformat(),
+            },
+        )
+
+    def test_admin_can_filter_users_by_university_role(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/users/?role=university&page_size=1')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 2)
+        self.assertEqual(response.json()['results'][0]['role'], 'university')
+        self.assertEqual(response.json()['results'][0]['studentId'], None)
+
+    def test_university_can_list_only_own_users(self):
+        own_student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        own_student = Student.objects.create(
+            university=self.university,
+            user=own_student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        other_student_user = User.objects.create_user(
+            username='petrov',
+            email='petrov@student.spbu.ru',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.other_university,
+            user=other_student_user,
+            full_name='Петров Петр Петрович',
+            email='petrov@student.spbu.ru',
+            group='ПМ-301',
+            course=3,
+        )
+
+        response = self.client.get('/api/users/?page=1&page_size=10')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['count'], 2)
+        self.assertEqual(
+            {user['id'] for user in payload['results']},
+            {self.user.id, own_student_user.id},
+        )
+        own_student_payload = next(user for user in payload['results'] if user['id'] == own_student_user.id)
+        self.assertEqual(own_student_payload['role'], 'student')
+        self.assertEqual(own_student_payload['studentId'], own_student.id)
+        self.assertEqual(own_student_payload['universityId'], self.university.id)
+
+    def test_university_users_list_keeps_role_filter_inside_own_university(self):
+        own_student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.university,
+            user=own_student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        other_student_user = User.objects.create_user(
+            username='petrov',
+            email='petrov@student.spbu.ru',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.other_university,
+            user=other_student_user,
+            full_name='Петров Петр Петрович',
+            email='petrov@student.spbu.ru',
+            group='ПМ-301',
+            course=3,
+        )
+
+        response = self.client.get('/api/users/?role=student')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 1)
+        self.assertEqual(response.json()['results'][0]['id'], own_student_user.id)
+
+    def test_university_cannot_delete_user(self):
+        response = self.client.delete(f'/api/users/{self.other_user.id}/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(User.objects.filter(id=self.other_user.id).exists())
+
+    def test_admin_users_list_rejects_invalid_role(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get('/api/users/?role=manager')
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_admin_can_delete_user(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        student = Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.delete(f'/api/users/{student_user.id}/')
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(User.objects.filter(id=student_user.id).exists())
+        self.assertFalse(Student.objects.filter(id=student.id).exists())
+
+    def test_admin_deleting_university_user_deletes_student_accounts(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        student_user = User.objects.create_user(
+            username='ivanov',
+            email='ivanov@student.msu.ru',
+            password='StrongPass123',
+        )
+        Student.objects.create(
+            university=self.university,
+            user=student_user,
+            full_name='Иванов Иван Иванович',
+            email='ivanov@student.msu.ru',
+            group='ИВТ-401',
+            course=4,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.delete(f'/api/users/{self.user.id}/')
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(User.objects.filter(id=self.user.id).exists())
+        self.assertFalse(University.objects.filter(id=self.university.id).exists())
+        self.assertFalse(User.objects.filter(id=student_user.id).exists())
+
+    def test_admin_delete_user_returns_404_for_missing_user(self):
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='StrongPass123',
+            is_staff=True,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.delete('/api/users/999999/')
+
+        self.assertEqual(response.status_code, 404)
+
     def test_admin_can_create_university_account_and_email_generated_password(self):
         admin = User.objects.create_user(
             username='admin',
