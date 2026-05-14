@@ -15,6 +15,8 @@ import { CreateDiplomaPage } from "../pages/diploma-create/ui/CreateDiplomaPage"
 import { MyDiplomasPage } from "../pages/my-diplomas/ui/MyDiplomasPage";
 import { ForbiddenPage } from "../pages/forbidden/ui/ForbiddenPage";
 import { PublicDiplomaPage } from "../pages/public-diploma/ui/PublicDiplomaPage";
+import { ForgotPasswordPage } from "../pages/forgot-password/ui/ForgotPasswordPage";
+import { ResetPasswordPage } from "../pages/reset-password/ui/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +42,14 @@ export const router = createBrowserRouter([
   {
     path: "/diplom/:publicId",
     element: <PublicDiplomaPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPasswordPage />,
   },
 
   {
