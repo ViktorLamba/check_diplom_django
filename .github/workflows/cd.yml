@@ -68,12 +68,37 @@ jobs:
             [ -n "${POSTGRES_DB}" ] || { echo "POSTGRES_DB is empty"; exit 1; }
             [ -n "${POSTGRES_USER}" ] || { echo "POSTGRES_USER is empty"; exit 1; }
             [ -n "${POSTGRES_PASSWORD}" ] || { echo "POSTGRES_PASSWORD is empty"; exit 1; }
+            [ -n "${DOCS_IMAGE}" ] || { echo "DOCS_IMAGE is empty"; exit 1; }
+            [ -n "${DOCS_EXTERNAL_PORT}" ] || { echo "DOCS_EXTERNAL_PORT is empty"; exit 1; }
             [ -n "${DJANGO_SECRET_KEY}" ] || { echo "DJANGO_SECRET_KEY is empty"; exit 1; }
             [ -n "${DJANGO_EMAIL_BACKEND}" ] || { echo "DJANGO_EMAIL_BACKEND is empty"; exit 1; }
             [ -n "${DJANGO_EMAIL_HOST}" ] || { echo "DJANGO_EMAIL_HOST is empty"; exit 1; }
             [ -n "${DJANGO_EMAIL_PORT}" ] || { echo "DJANGO_EMAIL_PORT is empty"; exit 1; }
             [ -n "${DJANGO_EMAIL_HOST_USER}" ] || { echo "DJANGO_EMAIL_HOST_USER is empty"; exit 1; }
             [ -n "${DJANGO_EMAIL_HOST_PASSWORD}" ] || { echo "DJANGO_EMAIL_HOST_PASSWORD is empty"; exit 1; }
+
+            export EXTERNAL_PORT
+            export BACKEND_EXTERNAL_PORT
+            export DOCS_EXTERNAL_PORT
+            export POSTGRES_EXTERNAL_PORT
+            export BACKEND_IMAGE
+            export FRONTEND_IMAGE
+            export DOCS_IMAGE
+            export POSTGRES_DB
+            export POSTGRES_USER
+            export POSTGRES_PASSWORD
+            export DJANGO_SECRET_KEY
+            export DJANGO_DEBUG
+            export DJANGO_ALLOWED_HOSTS
+            export DJANGO_SITE_URL
+            export DJANGO_EMAIL_BACKEND
+            export DJANGO_EMAIL_HOST
+            export DJANGO_EMAIL_PORT
+            export DJANGO_EMAIL_HOST_USER
+            export DJANGO_EMAIL_HOST_PASSWORD
+            export DJANGO_EMAIL_USE_TLS
+            export DJANGO_EMAIL_USE_SSL
+            export DJANGO_DEFAULT_FROM_EMAIL
 
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch --all --prune
@@ -110,10 +135,10 @@ jobs:
             export DOCKER_CLIENT_TIMEOUT=300
 
             if docker compose version >/dev/null 2>&1; then
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
+              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull
+              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --force-recreate --remove-orphans
+              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
+              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             else
               PROJECT_CONTAINERS="$(docker ps -aq --filter "label=com.docker.compose.project=${PROJECT_NAME}")"
               if [ -z "${PROJECT_CONTAINERS}" ]; then
@@ -122,8 +147,8 @@ jobs:
               if [ -n "${PROJECT_CONTAINERS}" ]; then
                 docker rm -f ${PROJECT_CONTAINERS} || true
               fi
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --remove-orphans
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
-              EXTERNAL_PORT="${EXTERNAL_PORT}" BACKEND_EXTERNAL_PORT="${BACKEND_EXTERNAL_PORT}" DOCS_EXTERNAL_PORT="${DOCS_EXTERNAL_PORT}" POSTGRES_EXTERNAL_PORT="${POSTGRES_EXTERNAL_PORT}" docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
+              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull
+              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --remove-orphans
+              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
+              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             fi
