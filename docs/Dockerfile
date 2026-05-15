@@ -14,7 +14,7 @@ COPY backend ./backend
 COPY docs ./docs
 
 WORKDIR /app/docs
-RUN make html
+RUN sphinx-build -b html source build/html
 
 FROM nginx:alpine
 
