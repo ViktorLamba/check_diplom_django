@@ -147,7 +147,7 @@ jobs:
               '      - "80"' \
               > docker-compose.deploy.yml
 
-            COMPOSE_FILES="${COMPOSE_FILES} -f docker-compose.deploy.yml"
+            COMPOSE_FILES_WITH_DOCS="${COMPOSE_FILES} -f docker-compose.deploy.yml"
             PULL_SERVICES="web frontend docs"
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -155,15 +155,17 @@ jobs:
             export DOCKER_CLIENT_TIMEOUT=1200
 
             if docker compose version >/dev/null 2>&1; then
-              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" config --services
-              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull ${PULL_SERVICES}
-              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --remove-orphans
-              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
-              docker compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
+              docker compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" config --services
+              docker compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" pull ${PULL_SERVICES}
+              docker compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" up -d --remove-orphans
+              docker compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" ps docs
+              docker compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
+              docker compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             else
-              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" config --services
-              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" pull ${PULL_SERVICES}
-              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" up -d --remove-orphans
-              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
-              docker-compose ${COMPOSE_FILES} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
+              docker-compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" config --services
+              docker-compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" pull ${PULL_SERVICES}
+              docker-compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" up -d --remove-orphans
+              docker-compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" ps docs
+              docker-compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" exec -T web python manage.py shell -c "from django.conf import settings; db=settings.DATABASES['default']; print(db['ENGINE'], db['NAME'], db['HOST'])"
+              docker-compose ${COMPOSE_FILES_WITH_DOCS} -p "${PROJECT_NAME}" exec -T web python manage.py migrate --noinput
             fi
