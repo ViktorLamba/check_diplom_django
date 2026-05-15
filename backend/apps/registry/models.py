@@ -1,3 +1,5 @@
+"""Модели реестра вузов, студентов, дипломов и проверок."""
+
 import uuid
 
 from django.conf import settings
@@ -5,6 +7,12 @@ from django.db import models
 
 
 class University(models.Model):
+    """Вуз, которому принадлежит отдельный пользовательский аккаунт.
+
+    Запись связывает учетную запись Django с организацией, от имени которой
+    создаются студенты и дипломы.
+    """
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -23,6 +31,12 @@ class University(models.Model):
 
 
 class Student(models.Model):
+    """Студент конкретного вуза.
+
+    Студент может иметь собственный аккаунт для входа в личный кабинет. Email
+    студента уникален в рамках одного вуза.
+    """
+
     STATUS_ACTIVE = 'active'
     STATUS_INACTIVE = 'inactive'
     STATUS_CHOICES = (
@@ -65,6 +79,13 @@ class Student(models.Model):
 
 
 class Diploma(models.Model):
+    """Диплом, выданный вузом студенту.
+
+    Диплом имеет внутренний числовой идентификатор и публичный UUID
+    ``public_id`` для проверки по открытой ссылке. Поле ``status`` определяет,
+    считается ли диплом действующим или отозванным.
+    """
+
     STATUS_VALID = 'valid'
     STATUS_REVOKED = 'revoked'
     STATUS_CHOICES = (
@@ -106,6 +127,13 @@ class Diploma(models.Model):
 
 
 class DiplomaVerificationLog(models.Model):
+    """Журнал публичных и внутренних проверок дипломов.
+
+    Запись создается при каждой проверке через форму или публичную страницу.
+    В журнал попадают запрошенные данные, результат проверки, источник, IP и
+    user-agent клиента.
+    """
+
     SOURCE_FORM = 'form'
     SOURCE_PUBLIC = 'public'
     SOURCE_CHOICES = (

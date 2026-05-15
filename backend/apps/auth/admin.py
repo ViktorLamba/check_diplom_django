@@ -1,3 +1,5 @@
+"""Настройки Django admin для приложения авторизации."""
+
 from django.contrib import admin
 import os
 
@@ -11,6 +13,8 @@ admin.site.site_url = os.getenv('DJANGO_SITE_URL', '/')
 
 @admin.register(TwoFactorCode)
 class TwoFactorCodeAdmin(admin.ModelAdmin):
+    """Административный интерфейс для просмотра 2FA-кодов."""
+
     list_display = ('id', 'user', 'code', 'expires_at', 'is_used', 'created_at')
     list_filter = ('is_used', 'created_at', 'expires_at')
     search_fields = ('user__username', 'user__email', 'code')

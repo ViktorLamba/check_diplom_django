@@ -1,8 +1,16 @@
+"""Модели приложения авторизации."""
+
 from django.db import models
 from django.conf import settings
 
 
 class TwoFactorCode(models.Model):
+    """Одноразовый код двухфакторной авторизации.
+
+    Код привязан к пользователю, имеет срок действия и помечается использованным
+    после успешного подтверждения входа.
+    """
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

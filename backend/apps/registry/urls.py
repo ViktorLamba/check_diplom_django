@@ -1,3 +1,5 @@
+"""URL-маршруты API реестра дипломов."""
+
 from django.urls import path
 
 from .views import (

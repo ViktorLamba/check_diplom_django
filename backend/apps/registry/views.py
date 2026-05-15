@@ -1,3 +1,5 @@
+"""JSON API реестра вузов, студентов, дипломов и проверок."""
+
 import json
 from datetime import date
 from secrets import token_urlsafe
@@ -19,6 +21,8 @@ User = get_user_model()
 
 
 def _parse_json_body(request):
+    """Вернуть JSON-тело запроса или ``None`` при ошибке разбора."""
+
     try:
         body = request.body.decode('utf-8') if request.body else '{}'
         return json.loads(body)
@@ -27,6 +31,8 @@ def _parse_json_body(request):
 
 
 def _current_university(request):
+    """Вернуть вуз текущего пользователя или JSON-ошибку доступа."""
+
     if not request.user.is_authenticated:
         return None, JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -38,6 +44,8 @@ def _current_university(request):
 
 
 def _current_student(request):
+    """Вернуть студента текущего пользователя или JSON-ошибку доступа."""
+
     if not request.user.is_authenticated:
         return None, JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -49,6 +57,8 @@ def _current_student(request):
 
 
 def _require_admin(request):
+    """Проверить, что текущий пользователь является администратором."""
+
     if not request.user.is_authenticated:
         return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -59,6 +69,8 @@ def _require_admin(request):
 
 
 def _require_admin_or_university(request):
+    """Проверить доступ администратора или пользователя вуза."""
+
     if not request.user.is_authenticated:
         return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -72,6 +84,8 @@ def _require_admin_or_university(request):
 
 
 def _positive_int(value, default, max_value=None):
+    """Преобразовать значение в положительное число с ограничением сверху."""
+
     try:
         parsed = int(value)
     except (TypeError, ValueError):
@@ -85,6 +99,8 @@ def _positive_int(value, default, max_value=None):
 
 
 def _student_payload(student):
+    """Сформировать JSON-представление студента."""
+
     return {
         'id': student.id,
         'userId': student.user_id,
@@ -99,6 +115,8 @@ def _student_payload(student):
 
 
 def _university_payload(university):
+    """Сформировать JSON-представление вуза."""
+
     return {
         'id': university.id,
         'userId': university.user_id,
@@ -110,6 +128,8 @@ def _university_payload(university):
 
 
 def _user_role(user):
+    """Определить прикладную роль пользователя по связанным сущностям."""
+
     university = getattr(user, 'university', None)
     student = getattr(user, 'student', None)
 
@@ -123,6 +143,8 @@ def _user_role(user):
 
 
 def _user_payload(user):
+    """Сформировать JSON-представление пользователя для административных списков."""
+
     university = getattr(user, 'university', None)
     student = getattr(user, 'student', None)
     student_university = student.university if student is not None else None
@@ -143,6 +165,8 @@ def _user_payload(user):
 
 
 def _diploma_payload(diploma):
+    """Сформировать JSON-представление диплома."""
+
     return {
         'id': diploma.id,
         'publicId': str(diploma.public_id),
@@ -162,6 +186,8 @@ def _diploma_payload(diploma):
 
 
 def _diploma_verification_payload(diploma):
+    """Сформировать данные диплома с результатом проверки."""
+
     payload = _diploma_payload(diploma)
     payload['verificationStatus'] = 'verified' if diploma.status == Diploma.STATUS_VALID else diploma.status
     payload['verificationMessage'] = (
@@ -173,6 +199,8 @@ def _diploma_verification_payload(diploma):
 
 
 def _diploma_verification_response(diploma):
+    """Сформировать полный ответ публичной проверки диплома."""
+
     verified = diploma.status == Diploma.STATUS_VALID
     return {
         'verified': verified,
@@ -189,6 +217,8 @@ def _diploma_verification_response(diploma):
 
 
 def _verification_log_payload(log):
+    """Сформировать JSON-представление записи журнала проверки."""
+
     diploma = log.diploma
     return {
         'id': log.id,
@@ -209,11 +239,15 @@ def _verification_log_payload(log):
 
 
 def _request_ip(request):
+    """Получить IP клиента с учетом заголовка ``X-Forwarded-For``."""
+
     forwarded_for = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
     return forwarded_for or request.META.get('REMOTE_ADDR') or None
 
 
 def _verification_status_for_diploma(diploma):
+    """Определить статус проверки по найденному или отсутствующему диплому."""
+
     if diploma is None:
         return DiplomaVerificationLog.STATUS_NOT_FOUND
     if diploma.status == Diploma.STATUS_VALID:
@@ -231,6 +265,8 @@ def _create_verification_log(
     requested_issued_at=None,
     requested_public_id=None,
 ):
+    """Создать запись журнала проверки диплома."""
+
     return DiplomaVerificationLog.objects.create(
         diploma=diploma,
         university=diploma.university if diploma is not None else None,
@@ -247,6 +283,8 @@ def _create_verification_log(
 
 
 def _paginated_response(queryset, request, payload_factory):
+    """Вернуть пагинированный JSON-ответ для queryset."""
+
     page = _positive_int(request.GET.get('page'), 1)
     page_size = _positive_int(request.GET.get('page_size'), 10, max_value=100)
     paginator = Paginator(queryset, page_size)
@@ -267,6 +305,8 @@ def _paginated_response(queryset, request, payload_factory):
 
 @require_http_methods(['GET'])
 def public_stats_view(request):
+    """Вернуть публичную статистику по вузам, пользователям, дипломам и проверкам."""
+
     return JsonResponse(
         {
             'universitiesCount': University.objects.count(),
@@ -280,6 +320,12 @@ def public_stats_view(request):
 
 @require_http_methods(['GET'])
 def users_view(request):
+    """Вернуть список пользователей для администратора или пользователя вуза.
+
+    Администратор видит всех пользователей. Вуз видит свой аккаунт и студентов
+    своего вуза. Поддерживаются фильтры ``role`` и ``search``.
+    """
+
     error = _require_admin_or_university(request)
     if error is not None:
         return error
@@ -322,6 +368,11 @@ def users_view(request):
 
 @require_http_methods(['DELETE'])
 def user_detail_view(request, user_id):
+    """Удалить пользователя администратором.
+
+    Если удаляется вуз, вместе с ним удаляются аккаунты его студентов.
+    """
+
     error = _require_admin(request)
     if error is not None:
         return error
@@ -346,6 +397,12 @@ def user_detail_view(request, user_id):
 
 @require_http_methods(['GET', 'POST'])
 def universities_view(request):
+    """Получить список вузов или создать вуз.
+
+    Доступ разрешен только администратору. При создании вуза создается
+    пользователь Django и отправляется письмо с временным паролем.
+    """
+
     error = _require_admin(request)
     if error is not None:
         return error
@@ -407,6 +464,11 @@ def universities_view(request):
 
 @require_http_methods(['PUT', 'PATCH', 'DELETE'])
 def university_detail_view(request, university_id):
+    """Изменить или удалить вуз по идентификатору.
+
+    При удалении вуза удаляется связанный пользователь и аккаунты студентов.
+    """
+
     error = _require_admin(request)
     if error is not None:
         return error
@@ -453,6 +515,12 @@ def university_detail_view(request, university_id):
 
 @require_http_methods(['GET', 'POST'])
 def students_view(request):
+    """Получить список студентов текущего вуза или создать студента.
+
+    При создании студента создается пользовательский аккаунт и отправляется
+    письмо с временным паролем.
+    """
+
     university, error = _current_university(request)
     if error is not None:
         return error
@@ -543,6 +611,8 @@ def students_view(request):
 
 @require_http_methods(['PUT', 'PATCH', 'DELETE'])
 def student_detail_view(request, student_id):
+    """Изменить или удалить студента текущего вуза."""
+
     university, error = _current_university(request)
     if error is not None:
         return error
@@ -607,6 +677,12 @@ def student_detail_view(request, student_id):
 
 @require_http_methods(['GET', 'POST'])
 def diplomas_view(request):
+    """Получить список дипломов или создать диплом.
+
+    Администратор видит все дипломы, вуз видит только свои. Создание диплома
+    доступно пользователю вуза.
+    """
+
     if request.method == 'GET':
         if not request.user.is_authenticated:
             return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
@@ -690,6 +766,13 @@ def diplomas_view(request):
 
 @require_http_methods(['POST'])
 def diploma_verify_view(request):
+    """Проверить диплом по номеру и дате выдачи.
+
+    Поле ``series`` необязательно. Если серия передана, поиск выполняется также
+    по вариантам ``series + number``, ``series number`` и ``series-number``.
+    Каждая проверка записывается в журнал.
+    """
+
     data = _parse_json_body(request)
     if data is None:
         return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
@@ -750,6 +833,8 @@ def diploma_verify_view(request):
 
 @require_http_methods(['GET'])
 def public_diploma_view(request, public_id):
+    """Проверить диплом по публичному UUID."""
+
     diploma = (
         Diploma.objects
         .select_related('student', 'university')
@@ -783,6 +868,12 @@ def public_diploma_view(request, public_id):
 
 @require_http_methods(['GET'])
 def diploma_verification_logs_view(request):
+    """Вернуть журнал проверок дипломов.
+
+    Администратор видит все проверки, вуз видит только проверки своих дипломов.
+    Поддерживаются фильтры ``search``, ``status`` и ``source``.
+    """
+
     if not request.user.is_authenticated:
         return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -827,6 +918,8 @@ def diploma_verification_logs_view(request):
 
 @require_http_methods(['GET'])
 def my_diplomas_view(request):
+    """Вернуть дипломы текущего студента."""
+
     student, error = _current_student(request)
     if error is not None:
         return error

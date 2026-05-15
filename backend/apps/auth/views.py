@@ -1,3 +1,5 @@
+"""JSON API для входа, выхода, 2FA и управления паролем."""
+
 import json
 import random
 from datetime import timedelta
@@ -22,6 +24,8 @@ PASSWORD_RESET_DETAIL = 'Если пользователь с таким email �
 
 
 def _parse_json_body(request):
+    """Вернуть JSON-тело запроса или ``None`` при ошибке разбора."""
+
     try:
         body = request.body.decode('utf-8') if request.body else '{}'
         return json.loads(body)
@@ -30,6 +34,8 @@ def _parse_json_body(request):
 
 
 def _user_payload(user):
+    """Сформировать JSON-представление пользователя с ролью в системе."""
+
     university = getattr(user, 'university', None)
     student = getattr(user, 'student', None)
 
@@ -56,6 +62,12 @@ def _user_payload(user):
 
 @require_POST
 def register_view(request):
+    """Создать обычного пользователя от имени администратора.
+
+    Доступ разрешен только авторизованному staff-пользователю. Ожидает поля
+    ``username``, ``email``, ``password`` и ``password_confirm``.
+    """
+
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({'detail': 'Только администратор может регистрировать пользователей.'}, status=403)
 
@@ -91,6 +103,12 @@ def register_view(request):
 
 @require_POST
 def password_reset_view(request):
+    """Отправить письмо со ссылкой восстановления пароля.
+
+    Метод всегда возвращает нейтральный ответ, чтобы не раскрывать наличие
+    пользователя с переданным email.
+    """
+
     data = _parse_json_body(request)
     if data is None:
         return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
@@ -121,6 +139,8 @@ def password_reset_view(request):
 
 @require_POST
 def password_reset_confirm_view(request):
+    """Установить новый пароль по ``uid`` и ``token`` из письма."""
+
     data = _parse_json_body(request)
     if data is None:
         return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
@@ -155,6 +175,8 @@ def password_reset_confirm_view(request):
 
 @require_POST
 def change_password_view(request):
+    """Сменить пароль текущего авторизованного пользователя."""
+
     if not request.user.is_authenticated:
         return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -186,6 +208,12 @@ def change_password_view(request):
 
 @require_POST
 def login_view(request):
+    """Выполнить вход пользователя.
+
+    Администратор получает сессию сразу. Для пользователя вуза или студента
+    создается одноразовый 2FA-код и отправляется на email.
+    """
+
     data = _parse_json_body(request)
     if data is None:
         return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
@@ -236,6 +264,8 @@ def login_view(request):
 
 @require_POST
 def verify_2fa_view(request):
+    """Подтвердить 2FA-код и создать пользовательскую сессию."""
+
     data = _parse_json_body(request)
     if data is None:
         return JsonResponse({'detail': 'Некорректное тело JSON.'}, status=400)
@@ -269,6 +299,8 @@ def verify_2fa_view(request):
 
 @require_POST
 def logout_view(request):
+    """Завершить текущую пользовательскую сессию."""
+
     if not request.user.is_authenticated:
         return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 
@@ -278,6 +310,8 @@ def logout_view(request):
 
 @require_GET
 def me_view(request):
+    """Вернуть данные текущего авторизованного пользователя."""
+
     if not request.user.is_authenticated:
         return JsonResponse({'detail': 'Требуется аутентификация.'}, status=401)
 

@@ -245,6 +245,23 @@ npm run lint
 npm run build
 ```
 
+## Документация Sphinx
+
+Исходники документации находятся в `docs/source/`. Раздел документации кода
+собирается Sphinx из русских docstring-ов backend-модулей через `autodoc`.
+
+Сборка HTML:
+
+```bash
+python -m venv .venv-docs
+source .venv-docs/bin/activate
+pip install -r docs/requirements.txt
+cd docs
+make html
+```
+
+Готовая документация будет в `docs/build/html/`.
+
 ## CI/CD
 
 ### CI: `.github/workflows/ci.yml`
@@ -263,6 +280,7 @@ Job `build-and-push-images` выполняется только для push в `
 
 - `main` публикует теги `backend-prod` и `frontend-prod`;
 - `release` публикует теги `backend-test` и `frontend-test`.
+- дополнительно публикуется образ документации: `docs-prod` или `docs-test`.
 
 ### CD: `.github/workflows/cd.yml`
 
@@ -271,9 +289,11 @@ Workflow запускается после успешного CI для вето
 - `main` деплоится как проект `check_prod`.
   - Frontend: порт `8010`
   - Backend/admin: порт `8020`
+  - Sphinx-документация: порт `8030`
 - `release` деплоится как проект `check_test`.
   - Frontend: порт `4999`
   - Backend/admin: порт `4998`
+  - Sphinx-документация: порт `4997`
   - PostgreSQL дополнительно публикуется на порт `5433`
 
 Деплой выполняется по SSH: сервер обновляет ветку, формирует `.env`, логинится в Docker Hub, подтягивает образы, пересоздает контейнеры и выполняет миграции.
